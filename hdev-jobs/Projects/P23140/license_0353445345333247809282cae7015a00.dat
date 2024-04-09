@@ -1,8 +1,0 @@
-##################################################################################
-# Bertram Bildverarbeitung GmbH  (Id: CID:0353445345333247809282cae7015a00)      #
-# HALCON E Progress RTL (FD) Bertram BV                                          #
-##################################################################################
-LICENSE MVTec_HALCON 25.05 MODULES=fd ID=CID:0353445345333247809282cae7015a00 \
-        FLAGS=PROGRESS_OK SESSIONS=1 SIGNATURE="E80D E2DA 44D1 980C FB3A 7685 \
-        31D5 28CC 22A1 D21D 7988 D9CB 5D98 3CC9 46FA D55C 97AA 495C EDA2 E83F \
-        1B2B AEDF F222 E297 8A02 9601 1CC1 C4CE 2386 5DDA 0099 2B04"
