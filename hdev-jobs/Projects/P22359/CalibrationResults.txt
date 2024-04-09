@@ -1,0 +1,18 @@
+Camera is calibrated and saved into:
+InternalCameraParameter.dat
+ 
+ camera_type = line_scan_division 
+       focus = 0.021 m
+       kappa = 139.933 
+          sx = 5.86e-06 m
+          sy = 5.86e-06 m
+          cx = 2048 px
+          cy = 512 px
+ image_width = 4096 px
+image_height = 1024 px
+          vx = -1.72645e-06 m/px
+          vy = 0.000358328 m/px
+          vz = 4.67339e-05 m/px
+ 
+Mean Square Error = 0.251 px
+LineSize = 0.3583mm/pix

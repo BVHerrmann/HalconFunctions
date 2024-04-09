@@ -1,0 +1,18 @@
+Camera is calibrated and saved into:
+StripePositionInternalCameraParameter.dat
+ 
+ camera_type = line_scan_division 
+       focus = 0.0206872 m
+       kappa = -233.715 
+          sx = 5.86e-06 m
+          sy = 5.86e-06 m
+          cx = 2053.51 px
+          cy = -17.6563 px
+ image_width = 4096 px
+image_height = 1024 px
+          vx = 1.36678e-06 m/px
+          vy = 0.000333446 m/px
+          vz = 0.000143102 m/px
+ 
+Mean Square Error = 0.349 px
+LineSize = 0.3334mm/pix

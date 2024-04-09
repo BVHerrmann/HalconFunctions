@@ -1,0 +1,24 @@
+Quality Scores Single Image:
+Diameter of Marks: 100% (28.4 px)
+Exposure: 98%
+Homogeneity: 100%
+Contrast: 100.00%
+Focus: 100.00%
+ 
+
+Quality Scores: Whole Sequence:
+Score Number of Images: 0%
+Field of View: 0%
+Tilt Angles: 1%
+ 
+
+Current Pose Data:
+X: -0.44
+Y: 0.03
+Z: 1.26
+alpha: 0.81
+beta:  4.78
+gamma: 265.15
+ 
+
+Mean Square Error: 0.722 px
