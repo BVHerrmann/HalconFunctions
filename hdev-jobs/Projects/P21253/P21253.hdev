@@ -1,0 +1,1059 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="22.11.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* OP4</c>
+<l>DirIO := 'OP4/io'</l>
+<l>DirNIO := 'OP4/nio'</l>
+<c></c>
+<c>* OP9 1</c>
+<l>* DirIO := 'OP9/1'</l>
+<l>* DirNIO := 'OP9/nio'</l>
+<c></c>
+<c>* OP9 2</c>
+<l>* DirIO := 'OP9/2'</l>
+<l>* DirNIO := 'OP9/nio'</l>
+<c></c>
+<c>* OP9 3</c>
+<l>* DirIO := 'OP9/3'</l>
+<l>* DirNIO := 'OP9/nio'</l>
+<c></c>
+<l>Reference := DirIO</l>
+<l>AbsThreshold := 25</l>
+<l>VarThreshold := 5</l>
+<l>FilterRadius := 2.5</l>
+<l>MinArea := 250</l>
+<l>Row1 := 0</l>
+<l>Column1 := 0</l>
+<l>Row2 := 0</l>
+<l>Column2 := 0</l>
+<c></c>
+<l>dev_get_window(WindowHandle)</l>
+<c></c>
+<c>* test all image files</c>
+<l>list_image_files (DirNIO, 'default', [], ImageFiles)</l>
+<l>for Index := 0 to |ImageFiles| - 1 by 1</l>
+<l>    read_image (Image, ImageFiles[Index])</l>
+<c>    </c>
+<l>*     ResetVariationModel (Image, ReferenceName, JobPass)</l>
+<l>    DetectDifference (Image, TrainedImage, VariationImage, Reference, AbsThreshold, VarThreshold, FilterRadius, MinArea, Row1, Column1, Row2, Column2, JobPass, MaxDifferenceArea, OptimizationScore)</l>
+<c>    </c>
+<l>*    TeachReference(Image, WindowHandle, ReferenceImageName, JobPass)</l>
+<l>*     Find3DModel (Image, '3.051.689-00-OP9.stl', 0.2, 0, 360, -5, 5, 0, 360, 400, 450, 75.0, 0.0, 3.45, 3.45, 50, JobPass, Score, X, Y, Z, Alpha, Beta, Gamma, AngleX, AngleY, AngleZ)</l>
+<l>*     Find3DModel (Image, 'V01_FR.stl', 0.4, 0, 360, -90, -80, 0, 360, 620, 640, 75.0, 0.0, 3.45, 3.45, 15, JobPass, Score, X, Y, Z, Alpha, Beta, Gamma, AngleX, AngleY, AngleZ)</l>
+<l>*     Find3DModel (Image, '3.051.582.stl', 0.1, 0, 360, -5, 5, 0, 360, 400, 450, 75.0, 0.0, 6.9, 6.9, 25, JobPass, Score, X, Y, Z, Alpha, Beta, Gamma, AngleX, AngleY, AngleZ)</l>
+<l>*     Find3DModel (Image, '3.051.295.stl', 0.3, 0, 360, -5, 5, 0, 360, 400, 450, 75.0, 0.0, 6.9, 6.9, 50, JobPass, Score, X, Y, Z, Alpha, Beta, Gamma, AngleX, AngleY, AngleZ)</l>
+<c>    </c>
+<c>    * draw window</c>
+<l>    dev_set_window(WindowHandle)</l>
+<c>    </c>
+<l>    * stop()</l>
+<l>    wait_seconds(1.0)</l>
+<l>endfor</l>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="DetectDifference">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="TrainedImage" base_type="iconic" dimension="0"/>
+<par name="VariationImage" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="Reference" base_type="ctrl" dimension="0"/>
+<par name="AbsThreshold" base_type="ctrl" dimension="0"/>
+<par name="VarThreshold" base_type="ctrl" dimension="0"/>
+<par name="FilterRadius" base_type="ctrl" dimension="0"/>
+<par name="MinArea" base_type="ctrl" dimension="0"/>
+<par name="Row1" base_type="ctrl" dimension="0"/>
+<par name="Column1" base_type="ctrl" dimension="0"/>
+<par name="Row2" base_type="ctrl" dimension="0"/>
+<par name="Column2" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="MaxDifferenceArea" base_type="ctrl" dimension="0"/>
+<par name="OptimizationScore" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<l>MaxDifferenceArea := 0</l>
+<c></c>
+<l>global tuple VariationModelIDs</l>
+<c></c>
+<l>try</l>
+<l>    if (VariationModelIDs != 0)</l>
+<l>        try</l>
+<l>            get_dict_tuple(VariationModelIDs, Reference, ModelID)</l>
+<l>        catch (Exception)</l>
+<l>            try</l>
+<l>                read_variation_model(Reference + '.vam', ModelID)</l>
+<l>                set_dict_tuple(VariationModelIDs, Reference, ModelID)</l>
+<l>            catch (Exception)</l>
+<l>                CreateVariationModel (Image, TrainedImage, VariationImage, Reference, JobPassCreateModel, NumTrainedImages)</l>
+<l>                read_variation_model(Reference + '.vam', ModelID)</l>
+<l>            endtry</l>
+<l>        endtry</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict(VariationModelIDs)</l>
+<l>    try    </l>
+<l>        read_variation_model(Reference + '.vam', ModelID)</l>
+<l>        set_dict_tuple(VariationModelIDs, Reference, ModelID)</l>
+<l>    catch (Exception)</l>
+<l>        CreateVariationModel (Image, TrainedImage, VariationImage, Reference, JobPassCreateModel, NumTrainedImages)</l>
+<l>        read_variation_model(Reference + '.vam', ModelID)</l>
+<l>    endtry</l>
+<l>endtry</l>
+<c></c>
+<c>* compare model</c>
+<l>prepare_variation_model (ModelID, AbsThreshold, VarThreshold)</l>
+<l>compare_ext_variation_model (Image, RegionDiff, ModelID, 'absolute')</l>
+<c></c>
+<c>* calculate connected regions</c>
+<l>connection(RegionDiff, ConnectedRegions)</l>
+<l>*fill_up(ConnectedRegions, ConnectedRegions)</l>
+<l>if (FilterRadius &gt; 0.5)</l>
+<l>    closing_circle(ConnectedRegions, ConnectedRegions, FilterRadius)</l>
+<l>    opening_circle(ConnectedRegions, ConnectedRegions, FilterRadius)</l>
+<l>    closing_circle(ConnectedRegions, ConnectedRegions, FilterRadius)</l>
+<l>    connection(ConnectedRegions, ConnectedRegions)</l>
+<l>endif</l>
+<c></c>
+<c>* draw acceptable differences</c>
+<l>if (Row2 &gt; 0 and Column2 &gt; 0 and Row2 &gt; Row1 and Column2 &gt; Column1)</l>
+<l>    select_shape (ConnectedRegions, ConnectedRegionsIO, ['area', 'row1', 'column1', 'row2', 'column2'], 'and', [0, 'min', 'min', Row1, Column1], [MinArea, Row2, Column2, 'max', 'max'])</l>
+<l>else</l>
+<l>    select_shape (ConnectedRegions, ConnectedRegionsIO, ['area'], 'and', [1.0], [MinArea])</l>
+<l>endif</l>
+<l>dev_set_color('green')</l>
+<l>dev_set_draw('margin')</l>
+<l>dev_display(ConnectedRegionsIO)</l>
+<c></c>
+<c>* draw inacceptable differences</c>
+<l>if (Row2 &gt; 0 and Column2 &gt; 0 and Row2 &gt; Row1 and Column2 &gt; Column1)</l>
+<l>    select_shape (ConnectedRegions, ConnectedRegionsNIO, ['area', 'row1', 'column1', 'row2', 'column2'], 'and', [MinArea, 'min', 'min', Row1, Column1], ['max', Row2, Column2, 'max', 'max'])</l>
+<l>else</l>
+<l>    select_shape (ConnectedRegions, ConnectedRegionsNIO, ['area'], 'and', [MinArea], ['max'])</l>
+<l>endif</l>
+<l>dev_set_color('red')</l>
+<l>dev_set_draw('margin')</l>
+<l>dev_display(ConnectedRegionsNIO)</l>
+<c></c>
+<c>* find max defect region</c>
+<l>concat_obj(ConnectedRegionsNIO, ConnectedRegionsIO, ConnectedRegions)</l>
+<l>count_obj(ConnectedRegions, NumConnected)</l>
+<l>if (NumConnected &gt; 0)</l>
+<l>    region_features(ConnectedRegions, 'area', RegionAreas)</l>
+<l>    MaxDifferenceArea := max(RegionAreas)</l>
+<l>endif</l>
+<c></c>
+<l>count_obj(ConnectedRegionsNIO, NumConnectedNIO)</l>
+<l>if (NumConnectedNIO == 0)</l>
+<l>    JobPass := 1</l>
+<l>endif</l>
+<c></c>
+<l>tuple_asinh ((MaxDifferenceArea - MinArea), OptimizationScore)</l>
+<c></c>
+<c>* set part</c>
+<l>if (Row2 &gt; 0 and Column2 &gt; 0 and Row2 &gt; Row1 and Column2 &gt; Column1)</l>
+<l>    dev_set_part(Row1, Column1, Row2, Column2)</l>
+<l>else</l>
+<l>    median_image (Image, MedianImage, 'circle', 3, 'mirrored')</l>
+<l>    auto_threshold (MedianImage, SegmentedImage, 2.0)</l>
+<l>    connection (SegmentedImage, ConnectedROI)</l>
+<l>    count_obj(ConnectedROI, NumConnectedROI)</l>
+<l>    if (NumConnectedROI &gt; 1)</l>
+<l>        get_image_size(Image, Width, Height)</l>
+<l>        remove_obj(ConnectedROI, ConnectedROI, 1)</l>
+<l>        union1(ConnectedROI, ConnectedROI)</l>
+<l>        region_features(ConnectedROI, ['row1', 'column1', 'row2', 'column2', 'width', 'height'], RoiArea)</l>
+<l>        RowMin := max2(0, RoiArea[0] - (RoiArea[5] * 0.1))</l>
+<l>        ColumnMin := max2(0, RoiArea[1] - (RoiArea[4] * 0.1))</l>
+<l>        RowMax := min2(Height, RoiArea[2] + (RoiArea[5] * 0.1))</l>
+<l>        ColumnMax := min2(Width, RoiArea[3] + (RoiArea[4] * 0.1))</l>
+<l>        dev_set_part(RowMin, ColumnMin, RowMax, ColumnMax)</l>
+<l>    endif</l>
+<l>endif</l>
+</body>
+<docu id="DetectDifference">
+<parameters>
+<parameter id="AbsThreshold">
+<default_type>real</default_type>
+<default_value>20.0</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Column1">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<description lang="en_US">Column index of upper left corner of image area.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Column2">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<description lang="en_US">Column index of lower right corner of image area.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="FilterRadius">
+<default_type>real</default_type>
+<default_value>2.5</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Image">
+<multichannel>optional</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="MaxDifferenceArea">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="MinArea">
+<default_type>integer</default_type>
+<default_value>1000</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>number</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="OptimizationScore">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Reference">
+<default_type>string</default_type>
+<default_value>reference_image</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Row1">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<description lang="en_US">Line index of upper left corner of image area.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Row2">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<description lang="en_US">Line index of lower right corner of image area.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="TrainedImage">
+<multichannel>false</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+<type_list>
+<item>byte</item>
+</type_list>
+</parameter>
+<parameter id="VarThreshold">
+<default_type>real</default_type>
+<default_value>2.0</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>125.000000</value_max>
+<value_min>0.500000</value_min>
+</parameter>
+<parameter id="VariationImage">
+<multichannel>false</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+<type_list>
+<item>byte</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Find3DModel">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="ModelFileName" base_type="ctrl" dimension="0"/>
+<par name="MinScore" base_type="ctrl" dimension="0"/>
+<par name="LongitudeMin" base_type="ctrl" dimension="0"/>
+<par name="LongitudeMax" base_type="ctrl" dimension="0"/>
+<par name="LatitudeMin" base_type="ctrl" dimension="0"/>
+<par name="LatitudeMax" base_type="ctrl" dimension="0"/>
+<par name="CamRollMin" base_type="ctrl" dimension="0"/>
+<par name="CamRollMax" base_type="ctrl" dimension="0"/>
+<par name="DistMin" base_type="ctrl" dimension="0"/>
+<par name="DistMax" base_type="ctrl" dimension="0"/>
+<par name="Focus" base_type="ctrl" dimension="0"/>
+<par name="Kappa" base_type="ctrl" dimension="0"/>
+<par name="Sx" base_type="ctrl" dimension="0"/>
+<par name="Sy" base_type="ctrl" dimension="0"/>
+<par name="MinContrast" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="Score" base_type="ctrl" dimension="0"/>
+<par name="X" base_type="ctrl" dimension="0"/>
+<par name="Y" base_type="ctrl" dimension="0"/>
+<par name="Z" base_type="ctrl" dimension="0"/>
+<par name="Alpha" base_type="ctrl" dimension="0"/>
+<par name="Beta" base_type="ctrl" dimension="0"/>
+<par name="Gamma" base_type="ctrl" dimension="0"/>
+<par name="AngleX" base_type="ctrl" dimension="0"/>
+<par name="AngleY" base_type="ctrl" dimension="0"/>
+<par name="AngleZ" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := false</l>
+<l>Score   := 0</l>
+<l>X       := 0</l>
+<l>Y       := 0</l>
+<l>Z       := 0</l>
+<l>Alpha   := 0</l>
+<l>Beta    := 0</l>
+<l>Gamma   := 0</l>
+<l>AngleX  := 0</l>
+<l>AngleY  := 0</l>
+<l>AngleZ  := 0</l>
+<c></c>
+<l>model_id := 0</l>
+<l>shape_model_file_name := ModelFileName  + '.sm3'</l>
+<c></c>
+<l>global tuple model_ids</l>
+<c></c>
+<l>try</l>
+<l>    if (model_ids != 0)</l>
+<l>        try</l>
+<l>            get_dict_tuple(model_ids, ModelFileName, model_id)</l>
+<l>        catch (Exception)</l>
+<l>            file_exists(shape_model_file_name, model_exists)</l>
+<l>            if (model_exists)</l>
+<l>                read_shape_model_3d (shape_model_file_name, model_id)</l>
+<l>                set_dict_tuple(model_ids, ModelFileName, model_id)</l>
+<l>            endif</l>
+<l>        endtry</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict(model_ids)</l>
+<c>    </c>
+<l>    file_exists(shape_model_file_name, model_exists)</l>
+<l>    if (model_exists)</l>
+<l>        read_shape_model_3d (shape_model_file_name, model_id)</l>
+<l>        set_dict_tuple(model_ids, ModelFileName, model_id)</l>
+<l>    endif</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>parameter_changed := 0</l>
+<l>get_image_size (Image, width, height)</l>
+<l>if(model_id != 0)</l>
+<l>    get_shape_model_3d_params(model_id, 'cam_param', cam_param)</l>
+<l>    parameter_changed := parameter_changed or cam_param[1] != Focus / 1000.0</l>
+<l>    parameter_changed := parameter_changed or cam_param[2] != Kappa</l>
+<l>    parameter_changed := parameter_changed or cam_param[3] != Sx / 1000000.0</l>
+<l>    parameter_changed := parameter_changed or cam_param[4] != Sy / 1000000.0</l>
+<l>    parameter_changed := parameter_changed or cam_param[7] != width</l>
+<l>    parameter_changed := parameter_changed or cam_param[8] != height</l>
+<c>    </c>
+<l>    get_shape_model_3d_params(model_id, ['cam_roll_max', 'cam_roll_min', 'dist_max', 'dist_min', 'latitude_max', 'latitude_min', 'longitude_max', 'longitude_min', 'min_contrast'], \
+                              param)</l>
+<l>    parameter_changed := parameter_changed or param[0] != rad(CamRollMax)</l>
+<l>    parameter_changed := parameter_changed or param[1] != rad(CamRollMin)</l>
+<l>    parameter_changed := parameter_changed or param[2] != DistMax / 1000.0</l>
+<l>    parameter_changed := parameter_changed or param[3] != DistMin / 1000.0</l>
+<l>    parameter_changed := parameter_changed or param[4] != rad(LatitudeMax)</l>
+<l>    parameter_changed := parameter_changed or param[5] != rad(LatitudeMin)</l>
+<l>    parameter_changed := parameter_changed or param[6] != rad(LongitudeMax)</l>
+<l>    parameter_changed := parameter_changed or param[7] != rad(LongitudeMin)</l>
+<l>    parameter_changed := parameter_changed or param[8] != MinContrast</l>
+<l>endif</l>
+<c></c>
+<l>if(model_id == 0 or parameter_changed != 0)</l>
+<l>    gen_cam_par_area_scan_division (Focus / 1000.0, Kappa, Sx / 1000000.0, Sy / 1000000.0, width / 2.0, height / 2.0, width, height, cam_param)</l>
+<c>    </c>
+<l>    read_object_model_3d (ModelFileName, 'mm', [], [], object_model, status)</l>
+<l>    prepare_object_model_3d (object_model, 'shape_based_matching_3d', 'true', [], [])</l>
+<c>    </c>
+<l>    create_shape_model_3d (object_model, cam_param, 0, 0, 0, 'gba', \
+                           rad(LongitudeMin), rad(LongitudeMax), rad(LatitudeMin), rad(LatitudeMax), rad(CamRollMin), rad(CamRollMax), \
+                           DistMin / 1000.0, DistMax / 1000.0, MinContrast, ['union_adjacent_contours', 'model_tolerance', 'lowest_model_level'], ['true', 1, 2], model_id)</l>
+<l>    set_dict_tuple(model_ids, ModelFileName, model_id)</l>
+<l>    write_shape_model_3d (model_id, shape_model_file_name)</l>
+<l>endif</l>
+<c></c>
+<l>find_shape_model_3d (Image, model_id, MinScore, 0, 0, ['recompute_score'], ['true'], ObjectInCameraPose, CovPose, ResultScore)</l>
+<c></c>
+<l>num_of_found := |ResultScore|</l>
+<l>if (num_of_found &gt; 0) </l>
+<l>    JobPass := true</l>
+<l>    Score  := ResultScore</l>
+<l>    X      := ObjectInCameraPose[0] * 1000.0</l>
+<l>    Y      := ObjectInCameraPose[1] * 1000.0</l>
+<l>    Z      := ObjectInCameraPose[2] * 1000.0</l>
+<l>    Alpha  := ObjectInCameraPose[3]</l>
+<l>    Beta   := ObjectInCameraPose[4]</l>
+<l>    Gamma  := ObjectInCameraPose[5]</l>
+<c>    </c>
+<c>    * Get reference point from model (seems off)?</c>
+<l>*     get_shape_model_3d_params (model_id, 'reference_point', ReferencePoint)</l>
+<l>    ReferencePoint := [0, 0, 0]</l>
+<c>    </c>
+<c>    * Project the reference point</c>
+<l>    pose_to_hom_mat3d (ObjectInCameraPose, ObjectInCameraHomMat3D)</l>
+<l>    affine_trans_point_3d (ObjectInCameraHomMat3D, ReferencePoint[0], ReferencePoint[1], ReferencePoint[2], ReferencePointX, ReferencePointY, ReferencePointZ)</l>
+<c>    </c>
+<c>    * Bildkoordinaten</c>
+<l>    project_3d_point (ReferencePointX, ReferencePointY, ReferencePointZ, cam_param, Row, Column)</l>
+<c>    </c>
+<c>    * Project the Axis Points</c>
+<l>    affine_trans_point_3d (ObjectInCameraHomMat3D, ReferencePoint[0] + 1.0, ReferencePoint[1], ReferencePoint[2], XAxisX, XAxisY, XAxisZ)</l>
+<l>    project_3d_point (XAxisX, XAxisY, XAxisZ, cam_param, RowX, ColumnX)</l>
+<l>    affine_trans_point_3d (ObjectInCameraHomMat3D, ReferencePoint[0], ReferencePoint[1] + 1.0, ReferencePoint[2], YAxisX, YAxisY, YAxisZ)</l>
+<l>    project_3d_point (YAxisX, YAxisY, YAxisZ, cam_param, RowY, ColumnY)</l>
+<l>    affine_trans_point_3d (ObjectInCameraHomMat3D, ReferencePoint[0], ReferencePoint[1], ReferencePoint[2] + 1.0, ZAxisX, ZAxisY, ZAxisZ)</l>
+<l>    project_3d_point (ZAxisX, ZAxisY, ZAxisZ, cam_param, RowZ, ColumnZ)</l>
+<c>    </c>
+<c>    * Calculate Angles in Image Plane</c>
+<l>    AngleX := deg(atan2(-(RowX - Row), ColumnX - Column))</l>
+<l>    AngleY := deg(atan2(-(RowY - Row), ColumnY - Column))</l>
+<l>    AngleZ := deg(atan2(-(RowZ - Row), ColumnZ - Column))</l>
+<l>endif</l>
+<c></c>
+<c>* Calculate Coordinate System Axis Length</c>
+<l>get_shape_model_3d_params (model_id, 'bounding_box1', BoundingBox)</l>
+<l>tuple_abs(BoundingBox, BoundingBoxAbs)</l>
+<l>tuple_mean(BoundingBoxAbs, CoordSystemAxisLength)</l>
+<c></c>
+<l>dev_get_window(WindowHandle)</l>
+<c></c>
+<l>if (Score &gt; 0)</l>
+<c>    * Display Coordinate System</c>
+<l>    dev_set_colored (6)</l>
+<l>    disp_3d_coord_system (WindowHandle, cam_param, ObjectInCameraPose, CoordSystemAxisLength)</l>
+<c>    </c>
+<c>    * Display Model Contours</c>
+<l>    project_shape_model_3d (model_contours, model_id, cam_param, ObjectInCameraPose, 'true', rad(90))</l>
+<l>    dev_set_color ('green')</l>
+<l>    dev_display(model_contours)</l>
+<c>    </c>
+<c>    * determine ROI</c>
+<l>    diameter_xld(model_contours, Row1, Column1, Row2, Column2, Diameter)</l>
+<l>    RowMin := min2(min(Row1), min(Row2))</l>
+<l>    ColumnMin :=  min2(min(Column1), min(Column2))</l>
+<l>    RowMax :=  max2(max(Row1), max(Row2))</l>
+<l>    ColumnMax := max2(max(Column1), max(Column2))</l>
+<l>    RowDiff := RowMax - RowMin</l>
+<l>    ColumnDiff := ColumnMax - ColumnMin</l>
+<l>    RowMin := max2(0, RowMin - (RowDiff * 0.1))</l>
+<l>    ColumnMin := max2(0, ColumnMin - (ColumnDiff * 0.1))</l>
+<l>    RowMax := min2(height, RowMax + (RowDiff * 0.1))</l>
+<l>    ColumnMax := min2(width, ColumnMax + (ColumnDiff * 0.1))</l>
+<l>    dev_set_part(RowMin, ColumnMin, RowMax, ColumnMax)</l>
+<l>else</l>
+<l>    create_pose(0, 0, (DistMin + DistMax) / 2.0 / 1000.0, (LatitudeMin + LatitudeMax) / 2.0, 0, 180, 'Rp+T', 'gba', 'point', pose)</l>
+<l>    project_shape_model_3d (ModelContours, model_id, cam_param, pose, 'true', rad(90))</l>
+<c>    </c>
+<l>    dev_set_colored (6)</l>
+<l>    disp_3d_coord_system(WindowHandle, cam_param, pose , CoordSystemAxisLength)</l>
+<c>    </c>
+<l>    dev_set_color('red')</l>
+<l>    dev_display(ModelContours)</l>
+<l>endif</l>
+<c></c>
+<l>* create_pose(0, 0, 1, 90, 26, 180, 'Rp+T', 'gba', 'point', Pose)</l>
+<l>* disp_3d_coord_system (WindowHandle, cam_param, Pose, 0.01)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Find3DModel">
+<parameters>
+<parameter id="Alpha">
+<default_type>real</default_type>
+<description lang="de_DE">Bezungssystem: Das Koordinatensystem im CAD Model</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="AngleX">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>180</value_max>
+<value_min>-180</value_min>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="AngleY">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>180</value_max>
+<value_min>-180</value_min>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="AngleZ">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>180</value_max>
+<value_min>-180</value_min>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="Beta">
+<default_type>real</default_type>
+<description lang="de_DE">Bezungssystem: Das Koordinatensystem im CAD Model</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="CamRollMax">
+<default_type>real</default_type>
+<default_value>360.0</default_value>
+<description lang="de_DE">Einheit: Grad</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>360.000000</value_max>
+<value_min>-360.000000</value_min>
+</parameter>
+<parameter id="CamRollMin">
+<default_type>real</default_type>
+<default_value>0.0</default_value>
+<description lang="de_DE">Einheit: Grad</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>360.000000</value_max>
+<value_min>-360.000000</value_min>
+</parameter>
+<parameter id="DistMax">
+<default_type>real</default_type>
+<default_value>1.0</default_value>
+<description lang="de_DE">Die maximale Distanz zwischen Kameraobjektiv und dem aufzunehmenden Objekt.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="DistMin">
+<default_type>real</default_type>
+<default_value>0.5</default_value>
+<description lang="de_DE">Einheit: Meter
+Die minimale Distanz zwischen Kameraobjektiv und dem aufzunehmenden Objekt.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Focus">
+<default_type>real</default_type>
+<description lang="de_DE">Einheit: Meter
+Die Brennweite des Objektivs.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Gamma">
+<default_type>real</default_type>
+<description lang="de_DE">Bezungssystem: Das Koordinatensystem im CAD Model</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="Image">
+<sem_type>image</sem_type>
+<type_list>
+<item>byte</item>
+</type_list>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<description lang="de_DE">Typ: Bool
+Der Wert gibt an, ob die Erkennung erfolgreich durchgeführt wurde.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="Kappa">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="LatitudeMax">
+<default_type>real</default_type>
+<default_value>0</default_value>
+<description lang="de_DE">Einheit: Grad
+LongiuteMin &lt;= LongiuteMax</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>90.000000</value_max>
+<value_min>-90.000000</value_min>
+</parameter>
+<parameter id="LatitudeMin">
+<default_type>real</default_type>
+<default_value>0</default_value>
+<description lang="de_DE">Einheit: Grad
+LatitudeMin &lt;= LatitudeMax</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>90.000000</value_max>
+<value_min>-90.000000</value_min>
+</parameter>
+<parameter id="LongitudeMax">
+<default_type>real</default_type>
+<default_value>0</default_value>
+<description lang="de_DE">Einheit: Grad
+LongiuteMin &lt;= LongiuteMax</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>360.000000</value_max>
+<value_min>-360.000000</value_min>
+</parameter>
+<parameter id="LongitudeMin">
+<default_type>real</default_type>
+<default_value>0</default_value>
+<description lang="de_DE">Einheit: Grad
+LongiuteMin &lt;= LongiuteMax</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>360.000000</value_max>
+<value_min>-360.000000</value_min>
+</parameter>
+<parameter id="MinContrast">
+<default_type>integer</default_type>
+<default_value>10</default_value>
+<description lang="de_DE">Die Anzahl der unterschiedlichen Grauwerte im Bild.
+Zur Verbesserung der Kantenerkennung.</description>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="MinScore">
+<default_type>real</default_type>
+<default_value>0.5</default_value>
+<description lang="de_DE">Die minimale Wert mit dem das aufgenommen Object mit dem Model übereinstimmten muss um erkannt zu werden.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>1.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="ModelFileName">
+<default_type>string</default_type>
+<description lang="de_DE">Der Dateiname für die benötigte CAD Datei.
+Der Dateiname sollte folgendes Format einhalten : &lt;Name&gt;.stl</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Score">
+<default_type>real</default_type>
+<description lang="de_DE">Der Wert gibt die Übereinstimmung des Models mit dem gefundenen Objekt an.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Sx">
+<default_type>real</default_type>
+<description lang="de_DE">Einheit: Meter
+Pixelbreite.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Sy">
+<default_type>real</default_type>
+<description lang="de_DE">Einheit: Meter
+Pixelhöhe.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="X">
+<default_type>real</default_type>
+<description lang="de_DE">Bezungssystem: Das Koordinatensystem im CAD Model</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="Y">
+<default_type>real</default_type>
+<description lang="de_DE">Bezungssystem: Das Koordinatensystem im CAD Model</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="Z">
+<default_type>real</default_type>
+<description lang="de_DE">Bezungssystem: Das Koordinatensystem im CAD Model</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<values>
+<item>0</item>
+</values>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="CreateVariationModel">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="TrainedImage" base_type="iconic" dimension="0"/>
+<par name="VariationImage" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="Reference" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="NumTrainedImages" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<c></c>
+<l>global tuple VariationModelIDs</l>
+<c></c>
+<l>try</l>
+<l>    if (VariationModelIDs != 0)</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict(VariationModelIDs)</l>
+<l>endtry</l>
+<c></c>
+<c>* create model</c>
+<l>get_image_size(Image, Width, Height)</l>
+<l>create_variation_model(Width, Height, 'byte', 'standard', ModelID)</l>
+<c></c>
+<c>* read all files in reference folder</c>
+<l>list_image_files (Reference, 'default', [], ImageFiles)</l>
+<c></c>
+<c>* train reference image</c>
+<l>for Index := 0 to |ImageFiles| - 1 by 1</l>
+<l>     read_image (Image, ImageFiles[Index])</l>
+<l>     train_variation_model(Image, ModelID)</l>
+<l>endfor</l>
+<c></c>
+<c>* store model</c>
+<l>write_variation_model(ModelID, Reference + '.vam')</l>
+<l>set_dict_tuple(VariationModelIDs, Reference, ModelID)</l>
+<c></c>
+<c>* output</c>
+<l>get_variation_model(TrainedImage, VariationImage, ModelID)</l>
+<l>NumTrainedImages := |ImageFiles|</l>
+<l>JobPass := 1</l>
+</body>
+<docu id="CreateVariationModel">
+<parameters>
+<parameter id="Image">
+<multichannel>optional</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="NumTrainedImages">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="Reference">
+<default_type>string</default_type>
+<default_value>reference_image</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="TrainedImage">
+<multichannel>false</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+<type_list>
+<item>byte</item>
+</type_list>
+</parameter>
+<parameter id="VariationImage">
+<multichannel>false</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+<type_list>
+<item>byte</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="ResetVariationModel">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="Reference" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<c></c>
+<l>global tuple VariationModelIDs</l>
+<c></c>
+<c>* delete vam file</c>
+<l>try</l>
+<l>    delete_file(Reference + '.vam')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c>* remove model from cache</c>
+<l>try</l>
+<l>    if (VariationModelIDs != 0)</l>
+<l>        remove_dict_key(VariationModelIDs, Reference)</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict(VariationModelIDs)</l>
+<l>endtry</l>
+<c></c>
+<l>JobPass := 1</l>
+</body>
+<docu id="ResetVariationModel">
+<parameters>
+<parameter id="Image">
+<multichannel>optional</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Reference">
+<default_type>string</default_type>
+<default_value>reference_image</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

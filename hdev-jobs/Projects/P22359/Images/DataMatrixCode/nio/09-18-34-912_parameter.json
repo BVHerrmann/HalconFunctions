@@ -1,0 +1,14 @@
+{
+    "Input": {
+        "RoiOffsetInMM": 220,
+        "RoiWidthInMM": 60,
+        "SymbolType": "Data Matrix ECC 200"
+    },
+    "Output": {
+        "CodeXPosInMM": 0,
+        "InspectionId": 19,
+        "JobPass": 0,
+        "ResultCode": ""
+    },
+    "Procedure": "find_data_matrix_line_scan"
+}

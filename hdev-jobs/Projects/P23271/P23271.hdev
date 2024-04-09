@@ -1,0 +1,1524 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>dev_update_off ()</l>
+<l>dev_close_window ()</l>
+<c></c>
+<l>ImageDir := '/images/template'</l>
+<c></c>
+<l>list_image_files (ImageDir, ['tiff', 'tif'], [], ImageFiles)</l>
+<l>parse_filename (ImageFiles, BaseName, Extension, Directory)</l>
+<c></c>
+<l>for Index := 0 to |ImageFiles| - 1 by 1</l>
+<l>    read_image(Image, ImageFiles[Index])</l>
+<l>    dev_display(Image)</l>
+<c>    </c>
+<c>    </c>
+<c>    * read Parameter</c>
+<l>    JsonFileName := BaseName[Index]</l>
+<l>    JsonFileName := JsonFileName{0:12} + 'parameter'</l>
+<l>    JsonFile := Directory[Index] + JsonFileName + '.json'</l>
+<l>    open_file(JsonFile, 'input', FileHandle)</l>
+<c>    </c>
+<l>    IsEOF := 0</l>
+<l>    Text := []</l>
+<l>    while(IsEOF==0)</l>
+<l>        fread_line(FileHandle, Line, IsEOF)</l>
+<l>        Text[|Text|] := Line</l>
+<l>    endwhile</l>
+<c>    </c>
+<l>    Text := join(Text, '')</l>
+<l>    json_to_dict(Text, [], [], DictHandle)</l>
+<c>    </c>
+<l>    DmcSize := DictHandle.Input.DmcSize</l>
+<l>    RowOffset := DictHandle.Input.RowOffset</l>
+<l>    ColumnOffset := DictHandle.Input.ColumnOffset</l>
+<l>    Height := DictHandle.Input.Height</l>
+<l>    Width := DictHandle.Input.Width</l>
+<l>    ModelFileName := DictHandle.Input.ModelFileName</l>
+<l>    create_model (Image, DmcSize, RowOffset, ColumnOffset, Height, Width, ModelFileName, JobPass)</l>
+<c>    </c>
+<l>    stop()</l>
+<l>endfor</l>
+<c></c>
+<c>* 2023-10-26</c>
+<l>ImageDir := '/images/2023-11-05'</l>
+<l>ModelFileName := 'PA.shm'</l>
+<l>RowPosDistance := 5.925</l>
+<l>ColumnPosDistance := 29.345</l>
+<l>MaxRowPosDeviation := 1</l>
+<l>MaxColumnPosDeviation := 1</l>
+<c></c>
+<l>* ImageDir := '/images/2023-11-06'</l>
+<l>* ModelFileName := 'RP.shm'</l>
+<l>* RowPosDistance := 8.475</l>
+<l>* ColumnPosDistance := 45.425</l>
+<l>* MaxRowPosDeviation := 1</l>
+<l>* MaxColumnPosDeviation := 1</l>
+<c></c>
+<c></c>
+<l>initialize()</l>
+<c></c>
+<l>list_image_files (ImageDir, ['tiff', 'tif'], [], ImageFiles)</l>
+<l>parse_filename (ImageFiles, BaseName, Extension, Directory)</l>
+<c></c>
+<l>PassCount := 0</l>
+<c></c>
+<l>for Index := 0 to |ImageFiles| - 1 by 1</l>
+<l>    read_image(Image, ImageFiles[Index])</l>
+<l>    dev_display(Image)</l>
+<c>    </c>
+<c>    * read Parameter</c>
+<l>    JsonFileName := BaseName[Index]</l>
+<l>    JsonFileName := JsonFileName{0:12} + 'parameter'</l>
+<l>    JsonFile := Directory[Index] + JsonFileName + '.json'</l>
+<l>    open_file(JsonFile, 'input', FileHandle)</l>
+<c>    </c>
+<l>    IsEOF := 0</l>
+<l>    Text := []</l>
+<l>    while(IsEOF==0)</l>
+<l>        fread_line(FileHandle, Line, IsEOF)</l>
+<l>        Text[|Text|] := Line</l>
+<l>    endwhile</l>
+<c>    </c>
+<l>    Text := join(Text, '')</l>
+<l>    json_to_dict(Text, [], [], DictHandle)</l>
+<c>    </c>
+<c>    * execute ocr</c>
+<l>    InputSN := DictHandle.Input.InputSN</l>
+<l>    InputRow1 := DictHandle.Input.InputRow1</l>
+<l>    InputRow2 := DictHandle.Input.InputRow2</l>
+<l>    InputRow3 := DictHandle.Input.InputRow3</l>
+<l>    InputRow4 := DictHandle.Input.InputRow4</l>
+<c>    </c>
+<l>    DmcSize := DictHandle.Input.DmcSize</l>
+<l>    CharacterWidth := DictHandle.Input.CharacterWidth</l>
+<l>    CharacterHeight := DictHandle.Input.CharacterHeight</l>
+<l>    RowOffset := DictHandle.Input.RowOffset</l>
+<l>    ColumnOffset := DictHandle.Input.ColumnOffset</l>
+<l>    RowDistance := DictHandle.Input.RowDistance</l>
+<l>    SerialNumberColumnOffset := DictHandle.Input.SerialNumberColumnOffset</l>
+<l>    SerialNumberRowOffset := DictHandle.Input.SerialNumberRowOffset</l>
+<l>    MinDataMatrixCodeQuality := DictHandle.Input.MinDataMatrixCodeQuality</l>
+<l>    GrayValue := DictHandle.Input.GrayValue  </l>
+<c>    </c>
+<l>    verify (Image, InputSN, InputRow1, InputRow2, InputRow3, InputRow4, DmcSize, CharacterWidth, CharacterHeight, RowOffset, ColumnOffset, RowDistance, SerialNumberColumnOffset, SerialNumberRowOffset, MinDataMatrixCodeQuality, GrayValue, ModelFileName, RowPosDistance, ColumnPosDistance, MaxRowPosDeviation, MaxColumnPosDeviation, JobPass, DecodedDataString, SerialNumber, Row1, Row2, Row3, Row4, DataMatrixCodeQuality, MaxDeviation, MinDeviation, MeanDeviation, RecognitionError, RowPosDeviation, ColumnPosDeviation)</l>
+<c>    </c>
+<l>    if (JobPass == 1)</l>
+<l>        PassCount := PassCount + 1</l>
+<l>    else </l>
+<l>*         stop()</l>
+<l>    endif</l>
+<c>    </c>
+<l>    stop()</l>
+<l>endfor</l>
+<c></c>
+<l>return()</l>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="get_deep_ocr_handle" access="local">
+<interface>
+<oc>
+<par name="Handle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Handle := 0</l>
+<l>ModelFileName := 'model_eWA_best_opt.hdl'</l>
+<l>global tuple Handles</l>
+<c></c>
+<l>try</l>
+<l>    if (Handles != 0)</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict (Handles)</l>
+<l>endtry</l>
+<c></c>
+<l>try</l>
+<l>    get_dict_tuple (Handles, ModelFileName, Handle)</l>
+<l>catch (Exception)</l>
+<l>    file_exists (ModelFileName, model_exists)</l>
+<l>    if (model_exists)</l>
+<l>        query_available_dl_devices ('ai_accelerator_interface', 'tensorrt', DLDeviceHandles)</l>
+<l>        if (|DLDeviceHandles| &gt; 0)</l>
+<l>            DLDeviceTensorRT := DLDeviceHandles[0]</l>
+<l>            create_deep_ocr ([], [], Handle)</l>
+<l>            set_deep_ocr_param (Handle, 'recognition_model', ModelFileName)</l>
+<l>            set_deep_ocr_param (Handle, 'device', DLDeviceTensorRT)</l>
+<c>            </c>
+<l>            set_dict_tuple (Handles, ModelFileName, Handle)</l>
+<l>        endif</l>
+<l>    else</l>
+<l>        gen_image_const (Image, 'byte', 512, 512)</l>
+<l>        optimize_model(Image, JobPass)</l>
+<l>    endif</l>
+<l>endtry</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="get_deep_ocr_handle">
+<parameters>
+<parameter id="Handle">
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>handle</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="set_suitable_device_in_ocr_handle" access="local">
+<interface>
+<ic>
+<par name="DeepOcrHandle" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* Determine deep learning device to work with (prefer GPU over CPU).</c>
+<l>query_available_dl_devices (['runtime', 'runtime'], ['gpu', 'cpu'], DLDeviceHandles)</l>
+<l>if (|DLDeviceHandles| == 0)</l>
+<l>    throw ('No supported device found to continue.')</l>
+<l>endif</l>
+<c></c>
+<l>for Index := 0 to |DLDeviceHandles| - 1 by 1</l>
+<l>    try</l>
+<l>        set_deep_ocr_param (DeepOcrHandle, 'device', DLDeviceHandles[Index])</l>
+<l>        break</l>
+<l>    catch (Exception)</l>
+<l>        if (Index == |DLDeviceHandles| - 1)</l>
+<l>            throw ('Could not set any of the supported devices to continue.')</l>
+<l>        endif</l>
+<l>    endtry</l>
+<l>endfor</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="set_suitable_device_in_ocr_handle">
+<parameters>
+<parameter id="DeepOcrHandle">
+<mixed_type>false</mixed_type>
+<sem_type>deep_ocr</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="initialize">
+<interface/>
+<body>
+<c>* init global variables</c>
+<l>global def tuple Handles</l>
+<l>create_dict (Handles)</l>
+<c></c>
+<c>* init ocr</c>
+<l>get_deep_ocr_handle (Handle)</l>
+<c></c>
+<l>gen_image_const (Image, 'byte', 256, 256)</l>
+<l>apply_deep_ocr (Image, Handle, 'recognition', DeepOcrResult)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="initialize">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="apply_ocr_on_region" access="local">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+<par name="Region" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="RecognizedWords" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>RecognizedWords := ''</l>
+<c></c>
+<l>reduce_domain (Image, Region, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImagePart)</l>
+<c></c>
+<c>* OCR</c>
+<l>get_deep_ocr_handle(DeepOcrHandle)</l>
+<l>apply_deep_ocr (ImagePart, DeepOcrHandle, 'recognition', DeepOcrResult)</l>
+<l>get_dict_tuple (DeepOcrResult, 'word', RecognizedWords)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="apply_ocr_on_region">
+<parameters>
+<parameter id="Image"/>
+<parameter id="RecognizedWords"/>
+<parameter id="Region"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="verify">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="InputSN" base_type="ctrl" dimension="0"/>
+<par name="InputRow1" base_type="ctrl" dimension="0"/>
+<par name="InputRow2" base_type="ctrl" dimension="0"/>
+<par name="InputRow3" base_type="ctrl" dimension="0"/>
+<par name="InputRow4" base_type="ctrl" dimension="0"/>
+<par name="DmcSize" base_type="ctrl" dimension="0"/>
+<par name="CharacterWidth" base_type="ctrl" dimension="0"/>
+<par name="CharacterHeight" base_type="ctrl" dimension="0"/>
+<par name="RowOffset" base_type="ctrl" dimension="0"/>
+<par name="ColumnOffset" base_type="ctrl" dimension="0"/>
+<par name="RowDistance" base_type="ctrl" dimension="0"/>
+<par name="SerialNumberColumnOffset" base_type="ctrl" dimension="0"/>
+<par name="SerialNumberRowOffset" base_type="ctrl" dimension="0"/>
+<par name="MinDataMatrixCodeQuality" base_type="ctrl" dimension="0"/>
+<par name="GrayValue" base_type="ctrl" dimension="0"/>
+<par name="ModelFileName" base_type="ctrl" dimension="0"/>
+<par name="RowPosDistance" base_type="ctrl" dimension="0"/>
+<par name="ColumnPosDistance" base_type="ctrl" dimension="0"/>
+<par name="MaxRowPosDeviation" base_type="ctrl" dimension="0"/>
+<par name="MaxColumnPosDeviation" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="DecodedDataString" base_type="ctrl" dimension="0"/>
+<par name="SerialNumber" base_type="ctrl" dimension="0"/>
+<par name="Row1" base_type="ctrl" dimension="0"/>
+<par name="Row2" base_type="ctrl" dimension="0"/>
+<par name="Row3" base_type="ctrl" dimension="0"/>
+<par name="Row4" base_type="ctrl" dimension="0"/>
+<par name="DataMatrixCodeQuality" base_type="ctrl" dimension="0"/>
+<par name="MaxGrayValue" base_type="ctrl" dimension="0"/>
+<par name="MinGrayValue" base_type="ctrl" dimension="0"/>
+<par name="MeanGrayValue" base_type="ctrl" dimension="0"/>
+<par name="RecognitionError" base_type="ctrl" dimension="0"/>
+<par name="RowPosDeviation" base_type="ctrl" dimension="0"/>
+<par name="ColumnPosDeviation" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* initialize</c>
+<l>JobPass := 0</l>
+<l>SerialNumber := ''</l>
+<l>Row1 := ''</l>
+<l>Row2 := ''</l>
+<l>Row3 := ''</l>
+<l>Row4 := ''</l>
+<l>DecodedDataString := ''</l>
+<l>DataMatrixCodeQuality := 0</l>
+<l>RecognitionError := 0</l>
+<l>MaxGrayValue := 0</l>
+<l>MinGrayValue := 0</l>
+<l>MeanGrayValue := 0</l>
+<l>RowPosDeviation := 0</l>
+<l>ColumnPosDeviation := 0</l>
+<c></c>
+<l>dev_set_draw('margin')</l>
+<c></c>
+<c>* 1. Find DMC</c>
+<l>create_data_code_2d_model ('Data Matrix ECC 200', 'default_parameters', 'standard_recognition', DataCodeHandle)</l>
+<l>set_data_code_2d_param(DataCodeHandle, 'symbol_rows_min', 20)</l>
+<c></c>
+<l>find_data_code_2d (Image, SymbolXLDs, DataCodeHandle, ['stop_after_result_num'], [1], ResultHandle, DecodedDataString)</l>
+<c></c>
+<l>if (|ResultHandle| = 0)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<c>* 2. Check DMC quality</c>
+<l>get_data_code_2d_results (DataCodeHandle, ResultHandle, 'quality_isoiec15415', Grades)</l>
+<l>DataMatrixCodeQuality := Grades[0]</l>
+<c></c>
+<l>if (DataMatrixCodeQuality &lt; MinDataMatrixCodeQuality)</l>
+<l>    dev_set_color ('red')</l>
+<l>    dev_display (SymbolXLDs)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<c>* 3. Rotate the image for OCR reading</c>
+<l>get_data_code_2d_results (DataCodeHandle, 'all_results', 'orientation', Orientation)</l>
+<l>rotate_image (Image, Image, -Orientation, 'bicubic')</l>
+<c></c>
+<l>dev_display(Image)</l>
+<c></c>
+<c>* 4. Repeat DMC search to have the exact position of the DMC</c>
+<l>find_data_code_2d (Image, SymbolXLDs, DataCodeHandle, ['stop_after_result_num'], [1], ResultHandle, DecodedDataString)</l>
+<c></c>
+<l>if (|ResultHandle| = 0)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>dev_set_color ('forest green')</l>
+<l>dev_display (SymbolXLDs)</l>
+<c></c>
+<c>* 5. Convert the recognized string into a hex number sequence</c>
+<l>Numbers := ords(DecodedDataString)</l>
+<l>DecodedDataString := join(Numbers $ '.2X', '')</l>
+<c></c>
+<c>* For the features of the DMC</c>
+<l>smallest_rectangle2_xld(SymbolXLDs, Row, Column, Phi, Length1, Length2)</l>
+<c></c>
+<c>* 6. Calculate the conversion factor using the DMC</c>
+<l>MmToPx := (Length2 + Length1) / DmcSize</l>
+<c></c>
+<c>* 7. Check Position</c>
+<l>check_position (Image, ModelFileName, MmToPx, Row, Column, RowPosDistance, ColumnPosDistance, MaxRowPosDeviation, MaxColumnPosDeviation, isValid, RowPosDeviation, ColumnPosDeviation, ModelRow, ModelCol)</l>
+<l>if (ModelRow = [] or ModelCol = []) </l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>gen_rectangle2_contour_xld (Rectangle, ModelRow + RowPosDistance * MmToPx, ModelCol + ColumnPosDistance * MmToPx, 0, (DmcSize / 2 + MaxColumnPosDeviation) * MmToPx, (DmcSize / 2 + MaxRowPosDeviation) * MmToPx)</l>
+<l>if (isValid)</l>
+<l>    dev_set_color('forest green')</l>
+<l>    dev_display(Rectangle)</l>
+<l>else</l>
+<l>    dev_set_color('red')</l>
+<l>    dev_display(Rectangle)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<c>* 8. Display the reference lines</c>
+<l>get_image_size(Image, Width, Height)</l>
+<l>gen_region_line (ColumnLine, 0, Column - (ColumnOffset * MmToPx), Height, Column - (ColumnOffset * MmToPx))</l>
+<l>dev_set_color('blue')</l>
+<l>dev_display(ColumnLine)</l>
+<c></c>
+<l>get_image_size(Image, Width, Height)</l>
+<l>gen_region_line (RowLine, Row - (RowOffset * MmToPx), 0 , Row - (RowOffset * MmToPx), Width)</l>
+<l>dev_set_color('blue')</l>
+<l>dev_display(RowLine)</l>
+<c></c>
+<c>* Simplifies handling</c>
+<l>convert_hex_to_string(InputRow1, InputRow1)</l>
+<l>convert_hex_to_string(InputRow2, InputRow2)</l>
+<l>convert_hex_to_string(InputRow3, InputRow3)</l>
+<l>convert_hex_to_string(InputRow4, InputRow4)</l>
+<c></c>
+<l>Input := []</l>
+<l>Input[|Input|] := InputSN</l>
+<l>Input[|Input|] := InputRow1</l>
+<l>Input[|Input|] := InputRow2</l>
+<l>Input[|Input|] := InputRow3</l>
+<l>Input[|Input|] := InputRow4</l>
+<c></c>
+<l>for Index := 0 to |Input| - 1 by 1</l>
+<l>    if (Input[Index] == '')</l>
+<l>        continue</l>
+<l>    endif</l>
+<l>    Input[Index] := join(split(Input[Index], ' '), ' ')</l>
+<l>endfor</l>
+<c></c>
+<c></c>
+<c>* 9. Quality Checks</c>
+<l>sobel_amp (Image, EdgeAmplitude, 'sum_abs', 7) </l>
+<l>* dev_open_window_fit_image(EdgeAmplitude, 0, 0, -1, -1, WindowHandle)</l>
+<l>* dev_display(EdgeAmplitude)</l>
+<l>* dev_close_window()</l>
+<c></c>
+<l>GrayValues := []</l>
+<l>for Index := 0 to |Input| - 1 by 1  </l>
+<l>    if (Input[Index] == '')</l>
+<l>        continue</l>
+<l>    endif</l>
+<c>    </c>
+<l>    Words := split(Input[Index], ' ')</l>
+<c>    </c>
+<l>    gen_empty_obj(ErrorRegion)</l>
+<c>    </c>
+<l>    CharacterCount := 0</l>
+<l>    for WordIndex := 0 to |Words| - 1 by 1</l>
+<l>        Word := Words[WordIndex]</l>
+<l>        WordLength := strlen(Word)</l>
+<c>        </c>
+<l>        for i := 0 to WordLength - 1 by 1</l>
+<l>            get_char_region (CharRegion, CharacterCount, CharacterWidth, i, ColumnOffset, Index, SerialNumberColumnOffset, SerialNumberRowOffset, RowOffset, CharacterHeight, RowDistance, WordLength, Row, MmToPx, Column)</l>
+<c>            </c>
+<l>            reduce_domain (EdgeAmplitude, CharRegion, ImageReduced)</l>
+<l>            try</l>
+<l>                crop_domain (ImageReduced, ImagePart)</l>
+<l>            catch (Exception)</l>
+<c>                * The region is outside the image</c>
+<l>                return()</l>
+<l>            endtry</l>
+<c>            </c>
+<l>            threshold(ImagePart, Region, 1, 255)</l>
+<l>            intensity (Region, ImagePart, Mean, Dev)</l>
+<c>            </c>
+<l>            GrayValues[|GrayValues|] := Mean</l>
+<c>            </c>
+<l>            if (Mean &lt; GrayValue)</l>
+<l>                union2(ErrorRegion, CharRegion, ErrorRegion)</l>
+<l>            endif</l>
+<l>        endfor</l>
+<c>        </c>
+<l>        CharacterCount := CharacterCount + WordLength + 1</l>
+<l>    endfor</l>
+<c>    </c>
+<l>    dev_set_draw ('fill')</l>
+<l>    dev_set_color('#ff000020')</l>
+<l>    dev_display(ErrorRegion)</l>
+<l>    dev_set_draw ('margin')</l>
+<l>endfor</l>
+<c></c>
+<l>MinGrayValue := min(GrayValues)</l>
+<l>MaxGrayValue := max(GrayValues)</l>
+<l>MeanGrayValue := mean(GrayValues)</l>
+<c></c>
+<l>if (MinGrayValue &lt; GrayValue)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<c>* 10. OCR reading</c>
+<l>Output := ['', '', '', '', '']</l>
+<c></c>
+<l>for Index := 0 to |Input| - 1 by 1  </l>
+<l>    if (Input[Index] == '')</l>
+<l>        continue</l>
+<l>    endif</l>
+<c>    </c>
+<l>    Words := split(Input[Index], ' ')</l>
+<l>    RecognizedWords := []</l>
+<c>    </c>
+<l>    CharacterCount := 0</l>
+<l>    for WordIndex := 0 to |Words| - 1 by 1</l>
+<l>        Word := Words[WordIndex]</l>
+<l>        WordLength := strlen(Word)</l>
+<c>        </c>
+<l>        gen_empty_obj(WordRegion)</l>
+<c>        </c>
+<l>        for i := 0 to WordLength - 1 by 1</l>
+<l>            get_char_region (CharRegion, CharacterCount, CharacterWidth, i, ColumnOffset, Index, SerialNumberColumnOffset, SerialNumberRowOffset, RowOffset, CharacterHeight, RowDistance, WordLength, Row, MmToPx, Column)</l>
+<l>            union2(WordRegion, CharRegion, WordRegion)</l>
+<l>        endfor</l>
+<c>        </c>
+<l>        apply_ocr_on_region(Image, WordRegion, RecognizedWord)</l>
+<c>        </c>
+<l>        RecognizedWords[|RecognizedWords|] := RecognizedWord</l>
+<c>        </c>
+<l>        dev_set_color('dim gray')</l>
+<l>        if (Word == RecognizedWord)</l>
+<l>            dev_set_color('forest green')</l>
+<l>        elseif (WordLength != strlen(RecognizedWord))</l>
+<l>            dev_set_color('red')</l>
+<l>        endif</l>
+<l>        dev_display(WordRegion)</l>
+<c>        </c>
+<c>        * Displaying the unrecognized characters </c>
+<l>        gen_empty_obj(ErrorRegion)</l>
+<c>        </c>
+<l>        if (WordLength == strlen(RecognizedWord))            </l>
+<l>            for i := 0 to WordLength - 1 by 1</l>
+<l>                if (Word{i} != RecognizedWord{i})</l>
+<l>                    get_char_region (CharRegion, CharacterCount, CharacterWidth, i, ColumnOffset, Index, SerialNumberColumnOffset, SerialNumberRowOffset, RowOffset, CharacterHeight, RowDistance, WordLength, Row, MmToPx, Column)</l>
+<l>                    union2(ErrorRegion, CharRegion, ErrorRegion)</l>
+<l>                endif</l>
+<l>            endfor</l>
+<c>            </c>
+<l>            dev_set_color('red')</l>
+<l>            dev_display(ErrorRegion)</l>
+<c>            </c>
+<l>        endif</l>
+<c>        </c>
+<l>        CharacterCount := CharacterCount + WordLength + 1</l>
+<l>    endfor</l>
+<c>    </c>
+<l>    Output[Index] := join(RecognizedWords, ' ')</l>
+<l>endfor</l>
+<c></c>
+<l>RecognitionError := Input != Output</l>
+<c></c>
+<l>for Index := 1 to |Output| - 1 by 1</l>
+<l>    convert_string_to_hex(Output[Index], tmp_string)</l>
+<l>    Output[Index] := tmp_string</l>
+<l>endfor</l>
+<c></c>
+<l>SerialNumber := Output[0]</l>
+<l>Row1 := Output[1]</l>
+<l>Row2 := Output[2]</l>
+<l>Row3 := Output[3]</l>
+<l>Row4 := Output[4]</l>
+<c></c>
+<l>JobPass := not(RecognitionError)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="verify">
+<parameters>
+<parameter id="CharacterHeight">
+<default_type>real</default_type>
+<default_value>1.5</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="CharacterWidth">
+<default_type>real</default_type>
+<default_value>1.295</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="ColumnOffset">
+<default_type>real</default_type>
+<default_value>34.845 </default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="ColumnPosDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="ColumnPosDistance">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="DataMatrixCodeQuality">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>4</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="DecodedDataString">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="DmcSize">
+<default_type>real</default_type>
+<default_value>10.47</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="GrayValue">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Image">
+<multichannel>true</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="InputRow1">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="InputRow2">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="InputRow3">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="InputRow4">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="InputSN">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="MaxColumnPosDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="MaxGrayValue">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="MaxRowPosDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="MeanGrayValue">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="MinDataMatrixCodeQuality">
+<default_type>integer</default_type>
+<default_value>1</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>4</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="MinGrayValue">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="ModelFileName">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="RecognitionError">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="Row1">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Row2">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Row3">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Row4">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="RowDistance">
+<default_type>real</default_type>
+<default_value>2.8</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="RowOffset">
+<default_type>real</default_type>
+<default_value>6.775</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="RowPosDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="RowPosDistance">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="SerialNumber">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="SerialNumberColumnOffset">
+<default_type>real</default_type>
+<default_value>15.2</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="SerialNumberRowOffset">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_update_off" access="local">
+<interface/>
+<body>
+<c>* This procedure sets different update settings to 'off'.</c>
+<c>* This is useful to get the best performance and reduce overhead.</c>
+<c>* </c>
+<l>dev_update_pc ('off')</l>
+<l>dev_update_var ('off')</l>
+<l>dev_update_window ('off')</l>
+<l>return ()</l>
+</body>
+<docu id="dev_update_off">
+<abstract lang="en_US">This procedure sets the parameter ```DisplayMode``` of &lt;op:dev_update_pc&gt;, &lt;op:dev_update_var&gt; and &lt;op:dev_update_window&gt; to *'off'*.</abstract>
+<alternatives>
+<item>dev_update_pc</item>
+<item>dev_update_var</item>
+<item>dev_update_window</item>
+</alternatives>
+<chapters lang="de_DE">
+<item>Develop</item>
+</chapters>
+<chapters lang="en_US">
+<item>Develop</item>
+</chapters>
+<chapters lang="ja_JP">
+<item>開発</item>
+</chapters>
+<example lang="en_US">dev_update_off ()
+* do something
+dev_update_on ()</example>
+<keywords lang="de_DE">
+<item>Aktualisierungsmodus setzen</item>
+</keywords>
+<keywords lang="en_US">
+<item>set update mode</item>
+</keywords>
+<library lang="en_US">MVTec Standard Procedures</library>
+<see_also>
+<item>dev_update_on</item>
+</see_also>
+<short lang="en_US">Switch dev_update_pc, dev_update_var, and dev_update_window to 'off'.</short>
+<parameters/>
+</docu>
+</procedure>
+<procedure name="get_char_region" access="local">
+<interface>
+<oo>
+<par name="CharRegion" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="CharacterCount" base_type="ctrl" dimension="0"/>
+<par name="CharacterWidth" base_type="ctrl" dimension="0"/>
+<par name="CharIndex" base_type="ctrl" dimension="0"/>
+<par name="ColumnOffset" base_type="ctrl" dimension="0"/>
+<par name="Index" base_type="ctrl" dimension="0"/>
+<par name="SerialNumberColumnOffset" base_type="ctrl" dimension="0"/>
+<par name="SerialNumberRowOffset" base_type="ctrl" dimension="0"/>
+<par name="RowOffset" base_type="ctrl" dimension="0"/>
+<par name="CharacterHeight" base_type="ctrl" dimension="0"/>
+<par name="RowDistance" base_type="ctrl" dimension="0"/>
+<par name="WordLength" base_type="ctrl" dimension="0"/>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="MmToPx" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>WordOffset := CharacterCount * CharacterWidth + (CharIndex * CharacterWidth) + CharacterWidth / 2</l>
+<c></c>
+<l>if (Index = 0)</l>
+<l>    BoxColumnOffset := - (ColumnOffset - SerialNumberColumnOffset - (CharIndex * CharacterWidth)) + CharacterWidth / 2</l>
+<l>    BoxRowOffset := - RowOffset - SerialNumberRowOffset + (CharacterHeight / 2) + RowDistance * Index</l>
+<l>else</l>
+<l>    BoxColumnOffset := - (ColumnOffset - WordOffset)</l>
+<l>    BoxRowOffset := - RowOffset + (CharacterHeight / 2) + RowDistance * (Index - 1)</l>
+<l>endif</l>
+<c></c>
+<l>Length1 := (WordLength * CharacterWidth) / 2</l>
+<l>Length2 := (CharacterHeight / 2)</l>
+<c></c>
+<l>gen_rectangle2(CharRegion, Row + (BoxRowOffset * MmToPx), Column + (BoxColumnOffset * MmToPx), 0, (CharacterWidth / 2) * MmToPx, Length2 * MmToPx)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="get_char_region">
+<parameters>
+<parameter id="CharIndex"/>
+<parameter id="CharRegion"/>
+<parameter id="CharacterCount"/>
+<parameter id="CharacterHeight"/>
+<parameter id="CharacterWidth"/>
+<parameter id="Column"/>
+<parameter id="ColumnOffset"/>
+<parameter id="Index"/>
+<parameter id="MmToPx"/>
+<parameter id="Row"/>
+<parameter id="RowDistance"/>
+<parameter id="RowOffset"/>
+<parameter id="SerialNumberColumnOffset"/>
+<parameter id="SerialNumberRowOffset"/>
+<parameter id="WordLength"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="convert_hex_to_string" access="local">
+<interface>
+<ic>
+<par name="HexString" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Result" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Result := ''</l>
+<c></c>
+<l>length := strlen(HexString)</l>
+<l>for Index := 0 to length - 1 by 4</l>
+<l>    SubString := HexString{Index:Index + 3}</l>
+<l>    SubString := '0x' + SubString</l>
+<c>    </c>
+<l>    Number := number(SubString)</l>
+<l>    Char := chr(Number)</l>
+<c>    </c>
+<l>    Result := Result + Char</l>
+<l>endfor</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="convert_hex_to_string">
+<parameters>
+<parameter id="HexString">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Result">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="convert_string_to_hex" access="local">
+<interface>
+<ic>
+<par name="String" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Result" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Result := ''</l>
+<c></c>
+<l>if (String = '')</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>Ords := ords(String)</l>
+<l>Result := join(Ords $ '.4X', '')</l>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="convert_string_to_hex">
+<parameters>
+<parameter id="Result">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="String">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="create_model">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="DmcSize" base_type="ctrl" dimension="0"/>
+<par name="RowOffset" base_type="ctrl" dimension="0"/>
+<par name="ColumnOffset" base_type="ctrl" dimension="0"/>
+<par name="Height" base_type="ctrl" dimension="0"/>
+<par name="Width" base_type="ctrl" dimension="0"/>
+<par name="ModelFileName" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<c></c>
+<l>dev_set_draw ('margin')</l>
+<c></c>
+<c>* 1. Find DMC</c>
+<l>create_data_code_2d_model ('Data Matrix ECC 200', 'default_parameters', 'standard_recognition', DataCodeHandle)</l>
+<l>set_data_code_2d_param(DataCodeHandle, 'symbol_rows_min', 20)</l>
+<c></c>
+<l>find_data_code_2d (Image, SymbolXLDs, DataCodeHandle, ['stop_after_result_num'], [1], ResultHandle, DecodedDataString)</l>
+<c></c>
+<l>if (|ResultHandle| = 0)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<c>* 2. Rotate the image for OCR reading</c>
+<l>get_data_code_2d_results (DataCodeHandle, 'all_results', 'orientation', Orientation)</l>
+<l>rotate_image (Image, Image, -Orientation, 'bicubic')</l>
+<c></c>
+<l>dev_display(Image)</l>
+<c></c>
+<c>* 3. Repeat DMC search to have the exact position of the DMC</c>
+<l>find_data_code_2d (Image, SymbolXLDs, DataCodeHandle, ['stop_after_result_num'], [1], ResultHandle, DecodedDataString)</l>
+<c></c>
+<l>if (|ResultHandle| = 0)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>dev_set_color ('forest green')</l>
+<l>dev_display (SymbolXLDs)</l>
+<c></c>
+<c>* For the features of the DMC</c>
+<l>smallest_rectangle2_xld(SymbolXLDs, Row, Column, Phi, Length1, Length2)</l>
+<c></c>
+<c>* 4. Calculate the conversion factor using the DMC</c>
+<l>MmToPx := (Length2 + Length1) / DmcSize</l>
+<c></c>
+<l>Row := Row - RowOffset * MmToPx</l>
+<l>Column := Column - ColumnOffset * MmToPx + (Width * MmToPx / 2)</l>
+<l>Len1 := Height * MmToPx / 2</l>
+<l>Len2 := Width * MmToPx / 2</l>
+<c></c>
+<l>gen_rectangle2_contour_xld (Rectangle, Row ,Column, Phi, Len1, Len2)</l>
+<l>dev_set_color('dim gray')</l>
+<l>dev_display(Rectangle)</l>
+<c></c>
+<l>crop_rectangle2 (Image, ImagePart, Row ,Column, Phi, Len1, Len2, 'false', 'constant')</l>
+<l>create_shape_model (ImagePart, 'auto', 0, rad(360), 'auto', 'none', 'use_polarity', 'auto', 'auto', ModelID)</l>
+<c></c>
+<l>find_shape_model (Image, ModelID, rad(-15), rad(15), 0.5, 1, 0.5, 'least_squares', 0, 0.9, Row, Column, Angle, Score)</l>
+<c></c>
+<l>if (|Score| = 0)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<l>gen_rectangle2_contour_xld (Rectangle, Row , Column, Phi, Len1, Len2)</l>
+<l>dev_set_color('forest green')</l>
+<l>dev_display(Rectangle)</l>
+<c></c>
+<l>write_shape_model (ModelID, ModelFileName + '.shm')</l>
+<c></c>
+<l>JobPass := 1</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="create_model">
+<parameters>
+<parameter id="ColumnOffset">
+<default_type>real</default_type>
+<default_value>34.125</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="DmcSize">
+<default_type>real</default_type>
+<default_value>11.85</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Height">
+<default_type>real</default_type>
+<default_value>1</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Image">
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="ModelFileName">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="RowOffset">
+<default_type>real</default_type>
+<default_value>5.925</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Width">
+<default_type>real</default_type>
+<default_value>11</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="check_position" access="local">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="FileName" base_type="ctrl" dimension="0"/>
+<par name="MmToPx" base_type="ctrl" dimension="0"/>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="RowPosDistance" base_type="ctrl" dimension="0"/>
+<par name="ColumnPosDistance" base_type="ctrl" dimension="0"/>
+<par name="MaxRowPosDeviation" base_type="ctrl" dimension="0"/>
+<par name="MaxColumnPosDeviation" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="RowPosDeviation" base_type="ctrl" dimension="0"/>
+<par name="ColumnPosDeviation" base_type="ctrl" dimension="0"/>
+<par name="ModelRow" base_type="ctrl" dimension="0"/>
+<par name="ModelCol" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<l>ModelRow := 0</l>
+<l>ModelPos := 0</l>
+<c></c>
+<l>load_shape_model (FileName, ModelID)</l>
+<l>find_shape_model (Image, ModelID, rad(-10), rad(10), 0.5, 1, 0.5, 'least_squares', 0, 0.9, ModelRow, ModelCol, Angle, Score)</l>
+<c></c>
+<l>if (|Score| = 0)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>* get_shape_model_contours (ModelContours, ModelID, 1)</l>
+<l>* hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>* hom_mat2d_translate (HomMat2DIdentity, ModelRow, ModelCol, HomMat2DTranslate)</l>
+<l>* affine_trans_contour_xld (ModelContours, ModelTrans, HomMat2DTranslate)</l>
+<l>* dev_display(ModelTrans)</l>
+<c></c>
+<l>gen_rectangle2_contour_xld (Contour, ModelRow, ModelCol, Angle, 0, 20)</l>
+<l>dev_display(Contour)</l>
+<l>gen_rectangle2_contour_xld (Contour, ModelRow, ModelCol, Angle, 20, 0)</l>
+<l>dev_display(Contour)</l>
+<c></c>
+<l>Angle := deg(Angle)</l>
+<c></c>
+<l>RowDistance := (Row - ModelRow) / MmToPx</l>
+<l>ColDistance := (Column - ModelCol) / MmToPx</l>
+<c></c>
+<l>RowPosDeviation := RowDistance - RowPosDistance</l>
+<l>ColumnPosDeviation := ColDistance - ColumnPosDistance</l>
+<c></c>
+<l>Distances := [RowPosDistance - MaxRowPosDeviation, RowDistance, RowPosDistance + MaxRowPosDeviation]</l>
+<l>if ( Distances[0] &gt; Distances[1] or Distances[1] &gt; Distances[2])</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>Distances := [ColumnPosDistance - MaxColumnPosDeviation, ColDistance, ColumnPosDistance + MaxColumnPosDeviation]</l>
+<l>if ( Distances[0] &gt; Distances[1] or Distances[1] &gt; Distances[2])</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>JobPass := 1</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="check_position">
+<parameters>
+<parameter id="Column">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="ColumnPosDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="ColumnPosDistance">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="FileName">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Image">
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="MaxColumnPosDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="MaxRowPosDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="MmToPx">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="ModelCol">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="ModelRow">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Row">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="RowPosDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="RowPosDistance">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="load_shape_model">
+<interface>
+<ic>
+<par name="ModelFileName" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Handle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Handle := 0</l>
+<l>global tuple Handles</l>
+<c></c>
+<l>try</l>
+<l>    if (Handles != 0)</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict (Handles)</l>
+<l>endtry</l>
+<c></c>
+<l>try</l>
+<l>    get_dict_tuple (Handles, ModelFileName, Handle)</l>
+<l>catch (Exception)</l>
+<l>    file_exists (ModelFileName, model_exists)</l>
+<l>    if (model_exists)</l>
+<l>        read_shape_model (ModelFileName, Handle)</l>
+<c>        </c>
+<l>        set_dict_tuple (Handles, ModelFileName, Handle)</l>
+<l>    endif</l>
+<l>endtry</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="load_shape_model">
+<parameters>
+<parameter id="Handle"/>
+<parameter id="ModelFileName"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="optimize_model">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>global tuple Handles</l>
+<l>ModelFileName := 'model_eWA_best_opt.hdl'</l>
+<l>JobPass := 0</l>
+<c></c>
+<l>query_available_dl_devices ('ai_accelerator_interface', 'tensorrt', DLDeviceHandles)</l>
+<l>if (|DLDeviceHandles| &gt; 0)</l>
+<l>    DLDeviceTensorRT := DLDeviceHandles[0]</l>
+<l>else</l>
+<l>    throw ('No supported device found to continue the optimization. Ensure that the TensorRT Plugin is installed!')</l>
+<l>endif</l>
+<c></c>
+<c></c>
+<l>Precision := 'float16'</l>
+<c></c>
+<l>read_dl_model('model_eWA_best.hdl', DLModelHandle)</l>
+<l>set_dl_model_param (DLModelHandle, 'batch_size', 1)</l>
+<c></c>
+<l>get_dl_device_param (DLDeviceTensorRT, 'optimize_for_inference_params', OptimizeForInferenceParams)</l>
+<l>optimize_dl_model_for_inference (DLModelHandle, DLDeviceTensorRT, Precision, [], OptimizeForInferenceParams, DLModelHandleTensorRT, ConversionReport)</l>
+<l>write_dl_model (DLModelHandleTensorRT, ModelFileName)</l>
+<l>clear_dl_model(DLModelHandle)</l>
+<c></c>
+<l>try</l>
+<l>    get_dict_tuple(Handles, ModelFileName, Handle)</l>
+<l>    remove_dict_key (Handles, ModelFileName)</l>
+<l>    clear_dl_model(Handle)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>file_exists (ModelFileName, model_exists)</l>
+<l>if (model_exists)</l>
+<c>   </c>
+<l>    create_deep_ocr ([], [], Handle)</l>
+<l>    set_deep_ocr_param (Handle, 'recognition_model', ModelFileName)</l>
+<l>    set_deep_ocr_param (Handle, 'device', DLDeviceTensorRT)</l>
+<c>    </c>
+<l>    set_dict_tuple (Handles, ModelFileName, Handle)</l>
+<l>endif</l>
+<c></c>
+<l>JobPass := 1</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="optimize_model">
+<parameters>
+<parameter id="Image">
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+<item>string</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

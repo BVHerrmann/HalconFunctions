@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* Initialization</c>
+<l>dev_update_off ()</l>
+<l>dev_close_window ()</l>
+<c></c>
+<l>Instructions := 'Rotate: Left button'</l>
+<l>Instructions[1] := 'Zoom: Shift + left button'</l>
+<l>Instructions[2] := 'Move: Ctrl + left button'</l>
+<c></c>
+<c></c>
+<l>SampleIndex := 2</l>
+<c></c>
+<l>switch (SampleIndex)</l>
+<l>case 0:</l>
+<l>    read_image(Z,'images/height_measurement_sample-no.13_h9_1.5x_lr_Z_0.tif')</l>
+<l>    read_image(AImage,'images/height_measurement_sample-no.13_h9_1.5x_lr_A_0.tif')</l>
+<l>    break</l>
+<l>case 1:</l>
+<l>    read_image(Z,'images/height_measurement_sample-no.17_h9_1.5x_lr_Z_0.tif')</l>
+<l>    read_image(AImage,'images/height_measurement_sample-no.17_h9_1.5x_lr_A_0.tif')</l>
+<l>    break</l>
+<l>case 2:</l>
+<l>    read_image(Z,'images/height_measurement_sample-no.18_h9_1.5x_lr_Z_0.tif')</l>
+<l>    read_image(AImage,'images/height_measurement_sample-no.18_h9_1.5x_lr_A_0.tif')</l>
+<l>    break</l>
+<l>case 3:</l>
+<l>    read_image(Z,'images/height_measurement_sample-no.8_h9_1.5x_lr_label not clear_Z_0.tif')</l>
+<l>    read_image(AImage,'images/height_measurement_sample-no.8_h9_1.5x_lr_label not clear_A_0.tif')</l>
+<l>    break</l>
+<l>endswitch</l>
+<c></c>
+<c>* create 3D Model</c>
+<l>get_image_size (Z, Width, Height)</l>
+<c></c>
+<l>GroundResolution := 16.0</l>
+<l>gen_image_surface_first_order (X, 'real', 0, GroundResolution, 0, 0, 0, Width, Height)</l>
+<l>gen_image_surface_first_order (Y, 'real', -GroundResolution, 0, 0, 0, 0, Width, Height)</l>
+<c></c>
+<l>xyz_attrib_to_object_model_3d (X, Y, Z, AImage, '&amp;gray', ObjectModel3D)</l>
+<l>prepare_object_model_3d (ObjectModel3D, 'segmentation', 'true', [], [])</l>
+<c></c>
+<c>* Display results </c>
+<l>dev_open_window (0, 0, Width / 2, Height / 2, 'black', WindowHandle1)</l>
+<l>set_display_font (WindowHandle1, 16, 'mono', 'true', 'false')</l>
+<l>dev_display (AImage)</l>
+<l>disp_message (WindowHandle1, 'Intensity image', 'window', 12, 12, 'black', 'true')</l>
+<c></c>
+<l>dev_open_window (0, Width / 2 + 8, Width, Height, 'gray', WindowHandle2)</l>
+<l>create_pose (-3000,10000, 400000, 125, 0, 0, 'Rp+T', 'gba', 'point', Pose)</l>
+<l>disp_object_model_3d(WindowHandle2, ObjectModel3D, [], Pose, ['color_attrib', 'color_attrib_start', 'color_attrib_end'], ['&amp;gray', 0, 255])</l>
+<l>stop()</l>
+<c></c>
+<c>* find primitives</c>
+<l>xyz_attrib_to_object_model_3d (X, Y, Z, AImage, '&amp;gray', ObjectModel3D)</l>
+<l>prepare_object_model_3d (ObjectModel3D, 'segmentation', 'true', [], [])</l>
+<c></c>
+<l>segment_object_model_3d (ObjectModel3D, ['primitive_type', 'max_orientation_diff', 'max_curvature_diff', 'min_area'], ['plane', 0.15 , 0.06, 20000], ObjectModel3DOut)</l>
+<c></c>
+<c>* sort</c>
+<l>for i := 1 to |ObjectModel3DOut| - 1 by 1</l>
+<l>    for j := 0 to |ObjectModel3DOut| - i - 1 by 1</l>
+<l>        get_object_model_3d_params(ObjectModel3DOut[j], 'center', Center)</l>
+<l>        get_object_model_3d_params(ObjectModel3DOut[j + 1], 'center', Center1)</l>
+<l>        if (Center[2] &gt; Center1[2])</l>
+<l>            tmp := ObjectModel3DOut[j]</l>
+<l>            ObjectModel3DOut[j] := ObjectModel3DOut[j + 1]</l>
+<l>            ObjectModel3DOut[j + 1] := tmp</l>
+<l>        endif</l>
+<l>    endfor</l>
+<l>endfor</l>
+<c></c>
+<l>disp_object_model_3d(WindowHandle2, ObjectModel3DOut, [], Pose, ['colored'], [6])</l>
+<l>stop()</l>
+<c></c>
+<l>RubberPlane := ObjectModel3DOut[2]</l>
+<l>ZylinderPlane := ObjectModel3DOut[1]</l>
+<l>ReferencePlane := ObjectModel3DOut[0]</l>
+<c></c>
+<c>* Find the center of the cylinder surface</c>
+<l>min_max_gray(Z, Z,0, Min, Max, Range)</l>
+<l>multi := 255 / Range</l>
+<l>add := -multi * Min</l>
+<l>scale_image(Z, ScaledImage, multi ,add)</l>
+<l>convert_image_type (ScaledImage, ImageConverted, 'byte')</l>
+<l>FindCircle(ImageConverted, 250, Row, Column, Radius)</l>
+<c></c>
+<c>* use center</c>
+<l>get_object_model_3d_params(ZylinderPlane, 'primitive_parameter', PrimitiveParameter)</l>
+<l>PointX := Row * GroundResolution</l>
+<l>PointY := - Column * GroundResolution</l>
+<l>PointZ := (PrimitiveParameter[3] - PrimitiveParameter[0] * PointX - PrimitiveParameter[1] * PointY) / PrimitiveParameter[2]</l>
+<c></c>
+<c>* calc distances</c>
+<c>* ax + by + cz - d = 0</c>
+<l>Distances := []</l>
+<l>for i := 0 to |ObjectModel3DOut| -1 by 1</l>
+<l>    get_object_model_3d_params(ObjectModel3DOut[i], 'primitive_parameter', PrimitiveParameter)</l>
+<c>    </c>
+<l>    Distances[i] := (PrimitiveParameter[0] * PointX) + (PrimitiveParameter[1] * PointY) + (PrimitiveParameter[2] * PointZ) - PrimitiveParameter[3]</l>
+<l>endfor</l>
+<c></c>
+<l>ZylinderHeight := abs(Distances[0])</l>
+<l>RubberHeight := abs(Distances[2])</l>
+<c></c>
+<c>* angle</c>
+<l>get_object_model_3d_params(ReferencePlane, 'primitive_parameter', RPP)</l>
+<l>get_object_model_3d_params(ZylinderPlane, 'primitive_parameter', ZPP)</l>
+<c></c>
+<l>vector_angle(RPP[0:2], ZPP[0:2], Angle)</l>
+<l>Angle := deg(Angle)</l>
+<c></c>
+<l>Text := 'Zylinder Height: ' + ZylinderHeight / 1000 + ' mm'</l>
+<l>Text[|Text|] := 'Rubber Height: ' + RubberHeight / 1000 + ' mm'</l>
+<l>Text[|Text|] := 'Angle: ' + Angle + ' Degree'</l>
+<l>set_display_font (WindowHandle2, 16, 'mono', 'true', 'false')</l>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<c></c>
+<l>stop()</l>
+<c></c>
+<c>* reference lines</c>
+<l>DispObjects := ObjectModel3DOut</l>
+<c></c>
+<c>* zylinder</c>
+<l>get_object_model_3d_params(ReferencePlane, 'primitive_parameter', PrimitiveParameter)</l>
+<c></c>
+<l>Length := ZylinderHeight</l>
+<l>x := PointX + Length * PrimitiveParameter[0]</l>
+<l>y := PointY + Length * PrimitiveParameter[1]</l>
+<l>z := PointZ + Length * PrimitiveParameter[2]</l>
+<c></c>
+<l>PoseArrowStart := [x, y, z, 0, 0, 0, 0, 0]</l>
+<l>PoseArrowEnd := [PointX, PointY, PointZ, 0, 0, 0, 0, 0]</l>
+<c></c>
+<l>gen_arrow_object_model_3d(10, PoseArrowStart, PoseArrowEnd, OM3DArrow)</l>
+<l>DispObjects := [DispObjects, OM3DArrow]</l>
+<c></c>
+<c>* rubber</c>
+<l>get_object_model_3d_params(RubberPlane, 'primitive_parameter', PrimitiveParameter)</l>
+<c></c>
+<l>Length := -RubberHeight</l>
+<l>x := PointX + Length * PrimitiveParameter[0]</l>
+<l>y := PointY + Length * PrimitiveParameter[1]</l>
+<l>z := PointZ + Length * PrimitiveParameter[2]</l>
+<c></c>
+<l>PoseArrowStart := [x, y, z, 0, 0, 0, 0, 0]</l>
+<l>PoseArrowEnd := [PointX, PointY, PointZ, 0, 0, 0, 0, 0]</l>
+<c></c>
+<l>gen_arrow_object_model_3d(10, PoseArrowStart, PoseArrowEnd, OM3DArrow)</l>
+<l>DispObjects := [DispObjects, OM3DArrow]</l>
+<c></c>
+<l>visualize_object_model_3d (WindowHandle2, DispObjects, [], Pose, ['colored'], [6], ['Created 3D model', 'Attribute used for visualization: \'&amp;gray\''], [], [Instructions], PoseOut)</l>
+<c></c>
+<l>*visualize_object_model_3d (WindowHandle2, ObjectModel3D, [], Pose, ['color_attrib', 'color_attrib_start', 'color_attrib_end'], ['&amp;gray', 0, 255], ['Created 3D model', 'Attribute used for visualization: \'&amp;gray\''], [], Instructions, PoseOut)</l>
+<l>* visualize_object_model_3d (WindowHandle2, ObjectModel3D, [], PoseOut, ['color_attrib', 'lut'], ['coord_z', 'rainbow'], ['Created 3D model', 'Attribute used for visualization: \'&amp;terrain\''], [], Instructions, PoseOut)</l>
+<c></c>
+<l>*visualize_object_model_3d (WindowHandle2, DispObject, [], PoseOut, ['colored'], [6], ['Created 3D model', 'Attribute used for visualization: \'&amp;gray\''], [], Instructions, PoseOut)</l>
+<l>DispObjects := [DispObjects, ObjectModel3D]</l>
+<l>visualize_object_model_3d (WindowHandle2, DispObjects, [], PoseOut, ['colored'], [6], ['Created 3D model', 'Attribute used for visualization: \'&amp;gray\''], [], Instructions, PoseOut)</l>
+<c></c>
+<l>dev_close_window()</l>
+<l>dev_close_window()</l>
+<c></c>
+<c></c>
+<c>* height profile</c>
+<l>dev_open_window (0, Width / 2 + 8, Width, Height, 'gray', WindowHandle)</l>
+<c></c>
+<l>xyz_attrib_to_object_model_3d (X, Y, Z, AImage, '&amp;gray', ObjectModel3D)</l>
+<l>*prepare_object_model_3d (ObjectModel3D, 'segmentation', 'true', [], [])</l>
+<c></c>
+<c>* rubber surface</c>
+<l>distance_object_model_3d(ObjectModel3D, RubberPlane, [], 0, [], [])</l>
+<l>select_points_object_model_3d (ObjectModel3D, '&amp;distance', -64, 64, ObjectModel3DRubberSurface)</l>
+<c></c>
+<l>get_object_model_3d_params(RubberPlane, 'primitive_parameter_pose', PoseP)</l>
+<l>pose_invert(PoseP,PoseP)</l>
+<l>rigid_trans_object_model_3d (ObjectModel3DRubberSurface, PoseP, ObjectModel3DRubberSurface)</l>
+<l>rigid_trans_object_model_3d (RubberPlane, PoseP, RubberPlane)</l>
+<l>test := [RubberPlane, ObjectModel3DRubberSurface]</l>
+<c></c>
+<l>create_pose(0,0, 90000, 0, 0, 0, 'Rp+T', 'gba', 'point', Pose)</l>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DRubberSurface, [], Pose, ['color_attrib', 'lut'], ['coord_z', 'twenty_four'], ['Created 3D model', 'Attribute used for visualization: \'&amp;gray\''], [], Instructions, PoseOut)</l>
+<c></c>
+<c></c>
+<c>* zylinder surface</c>
+<l>distance_object_model_3d(ObjectModel3D, ZylinderPlane, [], 0, [], [])</l>
+<l>select_points_object_model_3d (ObjectModel3D, '&amp;distance', -32, 32, ObjectModel3DZylinderSurface)</l>
+<c></c>
+<l>get_object_model_3d_params(ZylinderPlane, 'primitive_parameter_pose', PoseP)</l>
+<l>pose_invert(PoseP,PoseP)</l>
+<l>rigid_trans_object_model_3d (ObjectModel3DZylinderSurface, PoseP, ObjectModel3DZylinderSurface)</l>
+<c></c>
+<l>create_pose(0,0, 90000, 0, 0, 0, 'Rp+T', 'gba', 'point', Pose)</l>
+<l>visualize_object_model_3d (WindowHandle, ObjectModel3DZylinderSurface, [], Pose, ['color_attrib', 'lut'], ['coord_z', 'twenty_four'], ['Created 3D model', 'Attribute used for visualization: \'&amp;gray\''], [], Instructions, PoseOut)</l>
+<c></c>
+<l>dev_close_window()</l>
+<c></c>
+<c>* gen height image</c>
+<c></c>
+<l>dev_open_window (0, 0, Width, Height, 'gray', WindowHandle)</l>
+<l>dev_set_lut('twenty_four')</l>
+<c></c>
+<l>object_model_3d_to_xyz (X1, Y1, Z1, ObjectModel3DRubberSurface, 'from_xyz_map', [], [])</l>
+<l>dev_display(Z1)</l>
+<c></c>
+<l>object_model_3d_to_xyz (X2, Y2, Z2, ObjectModel3DZylinderSurface, 'from_xyz_map', [], [])</l>
+<l>dev_display(Z2)</l>
+<c></c>
+<l>*min_max_gray(Z1, Z1, 0, Min, Max, Range)</l>
+<l>Min := -32.0</l>
+<l>Max := 32.0</l>
+<l>Range := Max - Min</l>
+<c></c>
+<l>multi := 255 / Range</l>
+<l>add := -multi * Min</l>
+<l>scale_image(Z1, ScaledImage, multi ,add)</l>
+<l>convert_image_type (ScaledImage, ImageConverted, 'byte')</l>
+<c></c>
+<l>write_image(ImageConverted, 'tiff', 0, 'sample')</l>
+<c></c>
+<c></c>
+<l>stop()</l>
+<c></c>
+<l>dev_close_window()</l>
+<l>return()</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="vector_length">
+<interface>
+<ic>
+<par name="Vector" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Length" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>Sum := 0</l>
+<l>for Index := 0 to |Vector| - 1 by 1</l>
+<l>    Sum := Sum + pow(Vector[Index], 2)</l>
+<l>endfor</l>
+<c></c>
+<l>Length := sqrt(Sum)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="vector_length">
+<parameters>
+<parameter id="Length">
+<default_type>real</default_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Vector">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>true</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="vector_angle">
+<interface>
+<ic>
+<par name="Vector1" base_type="ctrl" dimension="0"/>
+<par name="Vector2" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Angle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>if (|Vector1| != |Vector2| )</l>
+<l>    throw('The vectors have different lengths!')</l>
+<l>endif</l>
+<c></c>
+<l>vector_length(Vector1, Length1)</l>
+<l>vector_length(Vector2, Length2)</l>
+<c></c>
+<l>SkalarProduct := 0</l>
+<c></c>
+<l>for Index := 0 to |Vector1| - 1 by 1</l>
+<l>    SkalarProduct := SkalarProduct + (Vector1[Index] * Vector2[Index])</l>
+<l>endfor</l>
+<c></c>
+<l>Angle := acos(SkalarProduct / (Length1 * Length1) )</l>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="vector_angle">
+<parameters>
+<parameter id="Angle">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Vector1">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>true</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Vector2">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>true</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="FindCircle">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="SearchRadius" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="Radius" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>* ModelID := 0</l>
+<l>* ModelName := 'FindCircle'</l>
+<l>* global tuple ShapeModelIDs</l>
+<c></c>
+<l>* try</l>
+<l>*     if (ShapeModelIDs != 0)</l>
+<l>*         try</l>
+<l>*             get_dict_tuple (ShapeModelIDs, ModelName, ModelID)</l>
+<l>*         catch (Exception)</l>
+<l>* CreateCircleShapeModel (SearchRadius, ModelID)</l>
+<l>*             set_dict_tuple (ShapeModelIDs, ModelName, ModelID)</l>
+<l>*         endtry</l>
+<l>*     endif</l>
+<l>* catch (Exception)</l>
+<l>*     create_dict (ShapeModelIDs)</l>
+<l>* CreateCircleShapeModel (SearchRadius, ModelID)</l>
+<l>*     set_dict_tuple (ShapeModelIDs, ModelName, ModelID)</l>
+<l>* endtry</l>
+<c></c>
+<l>* if (ModelID == 0)</l>
+<l>*     return ()</l>
+<l>* endif</l>
+<c></c>
+<l>CreateCircleShapeModel (SearchRadius, ModelID)</l>
+<c></c>
+<c>* step 4: find the object in other images</c>
+<l>set_generic_shape_model_param (ModelID, 'min_score', 0.6)</l>
+<l>find_generic_shape_model (Image, ModelID, MatchResultID, NumMatchResult)</l>
+<c></c>
+<c></c>
+<l>if (NumMatchResult &gt; 0)</l>
+<l>    get_generic_shape_model_result_object (Objects, MatchResultID, 'best', 'contours')</l>
+<l>*     dev_set_color ('green')</l>
+<l>*     dev_display (Objects)</l>
+<c></c>
+<l>    get_generic_shape_model_result (MatchResultID, 'best', 'row', Row)</l>
+<l>    get_generic_shape_model_result (MatchResultID, 'best', 'column', Column)</l>
+<l>    get_generic_shape_model_result (MatchResultID, 'best', 'scale_row', ScaleRowBest)</l>
+<l>    get_generic_shape_model_result (MatchResultID, 'best', 'score', score)</l>
+<l>    Radius := SearchRadius * ScaleRowBest</l>
+<l>endif</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="FindCircle">
+<parameters>
+<parameter id="Column">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Image"/>
+<parameter id="Radius">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Row">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="SearchRadius"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="CreateCircleShapeModel">
+<interface>
+<ic>
+<par name="SearchRadius" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ModelID" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* step 1: create a circle with the correct size</c>
+<l>RadiusCircle := SearchRadius</l>
+<l>SizeSynthImage := 2 * RadiusCircle + 10</l>
+<l>gen_ellipse_contour_xld (Circle, SizeSynthImage / 2, SizeSynthImage / 2, 0, RadiusCircle, RadiusCircle, 0, 6.28318, 'positive', 1.5)</l>
+<c></c>
+<c>* step 2: create an image and insert the XLD</c>
+<l>gen_image_const (EmptyImage, 'byte', SizeSynthImage, SizeSynthImage)</l>
+<l>paint_xld (Circle, EmptyImage, SyntheticModelImage, 128)</l>
+<c></c>
+<c>* step 3: create the model</c>
+<l>inspect_shape_model (SyntheticModelImage, ShapeModelImage, ShapeModelRegion, 1, 30)</l>
+<l>create_generic_shape_model (ModelID)</l>
+<l>set_generic_shape_model_param (ModelID, 'iso_scale_min', 0.8)</l>
+<l>set_generic_shape_model_param (ModelID, 'iso_scale_max', 1.2)</l>
+<l>train_generic_shape_model (SyntheticModelImage, ModelID)</l>
+<l>return ()</l>
+</body>
+<docu id="CreateCircleShapeModel">
+<parameters>
+<parameter id="ModelID"/>
+<parameter id="SearchRadius"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

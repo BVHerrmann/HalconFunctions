@@ -1,0 +1,742 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>dev_update_off ()</l>
+<l>dev_close_window ()</l>
+<c></c>
+<l>InputImageDir := 'images'</l>
+<l>ImageDir := 'tmp/' + InputImageDir</l>
+<l>OutputDir := 'tmp'</l>
+<c></c>
+<c>* these are the characters that may be used for training</c>
+<l>AllowedChars := [' ','0','1','2','3','4','5','6','7','8','9', \
+                 'A','B','C','D','E','F','G','H','I','J','K', \
+                 'L','M','N','O','P','Q','R','S','T','U','V', \
+                 'W','X','Y','Z','ß','.','-','‘','Ä','Ö','Ü', \
+                 'É','À','È','Ù','Â','Ê','Î','Ô','Û', 'ẞ', '/', '(', ')' \
+                 ]</l>
+<c></c>
+<l>PreProcessImages := 0</l>
+<c></c>
+<l>if (PreProcessImages)</l>
+<c>    </c>
+<c>    * Filtering the images based on the allowed characters</c>
+<l>    list_image_files (InputImageDir, 'default', [], ImageFiles)</l>
+<l>    parse_filename (ImageFiles, BaseName, Extension, Directory)</l>
+<c>    </c>
+<l>    TmpImagesFiles := []</l>
+<l>    for i := 0 to |ImageFiles| - 1 by 1    </l>
+<c>        * read Parameter</c>
+<l>        JsonFileName := BaseName[i]</l>
+<l>        JsonFileName := JsonFileName{0:12} + 'parameter'</l>
+<l>        JsonFile := InputImageDir + JsonFileName + '.json'</l>
+<l>        open_file(JsonFile, 'input', FileHandle)</l>
+<c>        </c>
+<l>        IsEOF := 0</l>
+<l>        Text := []</l>
+<l>        while(IsEOF==0)</l>
+<l>            fread_line(FileHandle, Line, IsEOF)</l>
+<l>            Text[|Text|] := Line</l>
+<l>        endwhile</l>
+<c>        </c>
+<l>        Text := join(Text, '')</l>
+<l>        json_to_dict(Text, [], [], DictHandle)</l>
+<c>        </c>
+<l>        InputString := []</l>
+<l>        InputString[|InputString|] := DictHandle.Input.InputSN</l>
+<l>        InputString[|InputString|] := DictHandle.Input.InputRow1</l>
+<l>        InputString[|InputString|] := DictHandle.Input.InputRow2</l>
+<l>        InputString[|InputString|] := DictHandle.Input.InputRow3</l>
+<l>        InputString[|InputString|] := DictHandle.Input.InputRow4</l>
+<c>        </c>
+<l>        for Index1 := 0 to |InputString| - 1 by 1</l>
+<l>            convert_hex_to_string(InputString[Index1], ConvertedString)</l>
+<l>            InputString[Index1] := ConvertedString</l>
+<l>        endfor</l>
+<c>       </c>
+<c>        </c>
+<l>        check_letters (InputString, AllowedChars, Valid)</l>
+<c>        </c>
+<l>        if (Valid)</l>
+<l>            TmpImagesFiles[|TmpImagesFiles|] := ImageFiles[i]</l>
+<l>        else </l>
+<l>*             stop()</l>
+<l>        endif</l>
+<l>    endfor</l>
+<l>    ImageFiles := TmpImagesFiles</l>
+<c>    </c>
+<c>    * make directory for the training images</c>
+<l>    Directorys := split(ImageDir, '/')</l>
+<l>    for i := 0 to |Directorys| - 1 by 1</l>
+<l>        try</l>
+<l>            Path := join(Directorys[0:i], '/')</l>
+<l>            make_dir(Path)    </l>
+<l>        catch (Exception)</l>
+<c>            </c>
+<l>        endtry</l>
+<l>    endfor</l>
+<c>    </c>
+<c>    * clear directory</c>
+<l>    list_image_files (ImageDir, 'default', [], TmpImageFiles)</l>
+<l>    for Index := |TmpImageFiles| to 1 by -1</l>
+<l>*         delete_file (TmpImageFiles[Index - 1])</l>
+<l>    endfor</l>
+<c>    </c>
+<c>    * rotate images and copy images to training directory</c>
+<l>    rotate_images (ImageFiles, ImageDir)</l>
+<l>endif</l>
+<c></c>
+<l>stop()</l>
+<c></c>
+<l>Samples := []</l>
+<c></c>
+<l>list_files (ImageDir, 'directories', Directories)</l>
+<l>for DirectoryIndex := 0 to |Directories| - 1 by 1    </l>
+<c>    * List all image files in the specified directory.</c>
+<l>    list_image_files (Directories[DirectoryIndex], 'default', [], ImageFiles)</l>
+<l>    parse_filename (ImageFiles, BaseName, Extension, Directory)</l>
+<c>    </c>
+<l>    for i := 0 to |ImageFiles| - 1 by 1</l>
+<l>        read_image(Image, ImageFiles[i])</l>
+<l>        dev_display(Image)</l>
+<c>        </c>
+<c>        * read Parameter</c>
+<l>        JsonFileName := BaseName[i]</l>
+<l>        JsonFileName := JsonFileName{0:12} + 'parameter'</l>
+<l>        JsonFile := Directory[i] + JsonFileName + '.json'</l>
+<l>        open_file(JsonFile, 'input', FileHandle)</l>
+<c>        </c>
+<l>        IsEOF := 0</l>
+<l>        Text := []</l>
+<l>        while(IsEOF==0)</l>
+<l>            fread_line(FileHandle, Line, IsEOF)</l>
+<l>            Text[|Text|] := Line</l>
+<l>        endwhile</l>
+<c>        </c>
+<l>        Text := join(Text, '')</l>
+<l>        json_to_dict(Text, [], [], DictHandle)</l>
+<c>        </c>
+<l>        InputSN := DictHandle.Input.InputSN</l>
+<l>        InputRow1 := DictHandle.Input.InputRow1</l>
+<l>        InputRow2 := DictHandle.Input.InputRow2</l>
+<l>        InputRow3 := DictHandle.Input.InputRow3</l>
+<l>        InputRow4 := DictHandle.Input.InputRow4</l>
+<c>        </c>
+<l>        convert_hex_to_string(InputRow1, InputRow1)</l>
+<l>        convert_hex_to_string(InputRow2, InputRow2)</l>
+<l>        convert_hex_to_string(InputRow3, InputRow3)</l>
+<l>        convert_hex_to_string(InputRow4, InputRow4)</l>
+<c>        </c>
+<l>        DmcSize := DictHandle.Input.DmcSize</l>
+<l>        CharacterWidth := DictHandle.Input.CharacterWidth</l>
+<l>        CharacterHeight := DictHandle.Input.CharacterHeight</l>
+<l>        RowOffset := DictHandle.Input.RowOffset</l>
+<l>        ColumnOffset := DictHandle.Input.ColumnOffset</l>
+<l>        RowDistance := DictHandle.Input.RowDistance</l>
+<l>        SerialNumberColumnOffset := DictHandle.Input.SerialNumberColumnOffset</l>
+<l>        SerialNumberRowOffset := DictHandle.Input.SerialNumberRowOffset</l>
+<c>        </c>
+<c>        * find data code</c>
+<l>        create_data_code_2d_model ('Data Matrix ECC 200', 'default_parameters', 'standard_recognition', DataCodeHandle)</l>
+<l>        set_data_code_2d_param(DataCodeHandle, 'symbol_rows_min', 20)</l>
+<c>        </c>
+<l>        find_data_code_2d (Image, SymbolXLDs, DataCodeHandle, ['stop_after_result_num'], [1], ResultHandle, DecodedDataStrings)</l>
+<c>        </c>
+<l>        if (|ResultHandle| = 0)</l>
+<l>            stop()</l>
+<l>        endif</l>
+<c>        </c>
+<c>        * visualize data code</c>
+<l>        dev_set_color ('forest green')</l>
+<l>        dev_set_draw('margin')</l>
+<l>        dev_display (SymbolXLDs)</l>
+<c>        </c>
+<l>        smallest_rectangle2_xld(SymbolXLDs, Row, Column, Phi, Length1, Length2)</l>
+<c>        </c>
+<c>        * use DMC to get the conversion factor</c>
+<l>        MmToPx := (Length2 + Length1) / DmcSize</l>
+<c>        </c>
+<l>        get_image_size(Image, Width, Height)</l>
+<l>        gen_region_line (ColumnLine, 0, Column - (ColumnOffset * MmToPx), Height, Column - (ColumnOffset * MmToPx))</l>
+<l>        dev_set_color('blue')</l>
+<l>        dev_display(ColumnLine)</l>
+<c>        </c>
+<c>        </c>
+<l>        get_image_size(Image, Width, Height)</l>
+<l>        gen_region_line (RowLine, Row - (RowOffset * MmToPx), 0 , Row - (RowOffset * MmToPx), Width)</l>
+<l>        dev_set_color('blue')</l>
+<l>        dev_display(RowLine)</l>
+<c>        </c>
+<c>        * process image</c>
+<c>        </c>
+<l>        gen_empty_obj(WordRegions)</l>
+<l>        Words := []</l>
+<c>        </c>
+<l>        RowCount := 5</l>
+<l>        for Index := 0 to RowCount - 1 by 1  </l>
+<c>            </c>
+<l>            switch(Index)</l>
+<l>            case 0:</l>
+<l>                InputSN := join(split(InputSN, ' '), ' ')</l>
+<l>                LineWords := InputSN</l>
+<l>                break</l>
+<l>            case 1:</l>
+<l>                InputRow1 := join(split(InputRow1, ' '), ' ')</l>
+<l>                LineWords := InputRow1</l>
+<l>                break</l>
+<l>            case 2:</l>
+<l>                InputRow2 := join(split(InputRow2, ' '), ' ')</l>
+<l>                LineWords := InputRow2</l>
+<l>                break</l>
+<l>            case 3:</l>
+<l>                InputRow3 := join(split(InputRow3, ' '), ' ')</l>
+<l>                LineWords := InputRow3</l>
+<l>                break</l>
+<l>            case 4:</l>
+<l>                InputRow4 := join(split(InputRow4, ' '), ' ')</l>
+<l>                LineWords := InputRow4</l>
+<l>                break</l>
+<l>            endswitch</l>
+<c>            </c>
+<l>            if (LineWords == '')</l>
+<l>                continue</l>
+<l>            endif</l>
+<c>            </c>
+<l>            LineWords := split(LineWords, ' ')</l>
+<c>            </c>
+<l>            CharacterCount := 0</l>
+<l>            for WordIndex := 0 to |LineWords| - 1 by 1 </l>
+<l>                WordLength := strlen(LineWords[WordIndex])</l>
+<c>                </c>
+<l>                WordOffset := CharacterCount * CharacterWidth + ((WordLength * CharacterWidth) / 2)</l>
+<c>                </c>
+<c>                * calc box position</c>
+<c>                </c>
+<l>                if (Index = 0)</l>
+<l>                    BoxRowOffset := - RowOffset - SerialNumberRowOffset + (CharacterHeight / 2) + RowDistance * Index</l>
+<l>                    BoxColumnOffset := - (ColumnOffset - SerialNumberColumnOffset - (WordLength * CharacterWidth) / 2 )</l>
+<l>                else</l>
+<l>                    BoxRowOffset := - RowOffset + (CharacterHeight / 2) + RowDistance * (Index - 1)</l>
+<l>                    BoxColumnOffset := - (ColumnOffset - WordOffset)</l>
+<l>                endif</l>
+<c>                </c>
+<c>                </c>
+<l>                Length1 := (WordLength * CharacterWidth) / 2</l>
+<l>                Length2 := (CharacterHeight / 2)</l>
+<c>                </c>
+<c>                </c>
+<l>                gen_rectangle2(Rectangle, Row + (BoxRowOffset * MmToPx), Column + (BoxColumnOffset * MmToPx), 0, Length1 * MmToPx, Length2 * MmToPx)</l>
+<l>                concat_obj(WordRegions, Rectangle, WordRegions)</l>
+<c>                </c>
+<l>                CharacterCount := CharacterCount + WordLength + 1</l>
+<c>                </c>
+<l>                Words[|Words|] := LineWords[WordIndex]</l>
+<l>            endfor</l>
+<l>        endfor </l>
+<c>        </c>
+<l>        dev_set_color('forest green')</l>
+<l>        dev_display(WordRegions)</l>
+<c>        </c>
+<l>        count_obj(WordRegions, RegionCount)</l>
+<l>        if (RegionCount != |Words|) </l>
+<l>            stop()</l>
+<l>        endif</l>
+<c>        </c>
+<c>        * Write the results to the sample dictionary.</c>
+<l>        Sample := dict{}</l>
+<c>        </c>
+<l>        ImageFileName := ImageFiles[i]</l>
+<l>        ImageFileName := split(ImageFileName, '/')</l>
+<l>        ImageFileName := join(ImageFileName[2:|ImageFileName| -1], '/')</l>
+<c>        </c>
+<l>        *ImageFileName := BaseName[i] + '.' + Extension[i]</l>
+<l>        Sample.image_id := |Samples|</l>
+<l>        Sample.image_file_name := ImageFileName</l>
+<c>        </c>
+<l>        region_features(WordRegions, 'row', Sample.bbox_row)</l>
+<l>        region_features(WordRegions, 'column', Sample.bbox_col)</l>
+<l>        region_features(WordRegions, 'rect2_len1', Sample.bbox_length1)</l>
+<l>        region_features(WordRegions, 'rect2_len2', Sample.bbox_length2)</l>
+<l>        region_features(WordRegions, 'rect2_phi', Sample.bbox_phi)</l>
+<c>        </c>
+<c>        * correct orientation of the regions</c>
+<l>        for j := 0 to |Sample.bbox_phi| - 1 by 1</l>
+<l>            if (Sample.bbox_phi[j] != 0)</l>
+<c>                </c>
+<l>                tmp_phi := Sample.bbox_phi</l>
+<l>                tmp_phi[j] := tmp_phi[j] - rad(90)</l>
+<l>                Sample.bbox_phi := tmp_phi</l>
+<c>                </c>
+<l>                tmp_len1 := Sample.bbox_length1[j]</l>
+<l>                tmp_len2 := Sample.bbox_length2[j]</l>
+<c>                </c>
+<l>                Sample.bbox_length1[j] := tmp_len2</l>
+<l>                Sample.bbox_length2[j] := tmp_len1 </l>
+<l>            endif</l>
+<l>        endfor</l>
+<c>        </c>
+<c>        * Every found word belongs to the 'word' cl</c>
+<c>        * class ID is 0.</c>
+<l>        Sample.bbox_label_id := gen_tuple_const(|Words|,0)</l>
+<c>        * The content of the word is added as 'label_custom_data'.</c>
+<l>        LabelData := gen_tuple_const(|Words|,HNULL)</l>
+<c>        </c>
+<l>        for WordIndex := 0 to |Words| - 1 by 1</l>
+<l>            TextDict := dict{}</l>
+<l>            TextDict.text := Words[WordIndex]</l>
+<l>            LabelData[WordIndex] := TextDict</l>
+<l>        endfor</l>
+<l>        Sample.label_custom_data := LabelData</l>
+<c>        </c>
+<l>        Samples[|Samples|] := Sample</l>
+<c>        </c>
+<l>*         stop()</l>
+<l>    endfor </l>
+<c>    </c>
+<l>endfor</l>
+<c></c>
+<c>* Set output path of dataset dictionary.</c>
+<l>OutputName := OutputDir + '/eWA.hdict'</l>
+<c></c>
+<l>DLDataset := dict{}</l>
+<l>DLDataset.image_dir := ImageDir</l>
+<l>DLDataset.class_names := ['word', 'ignore']</l>
+<l>DLDataset.class_ids := [0, 1]</l>
+<c></c>
+<c>* Set the collected samples to the dataset dictionary.</c>
+<l>DLDataset.samples := Samples</l>
+<c>* </c>
+<c>* Write the dataset dictionary to file.</c>
+<l>write_dict (DLDataset, OutputName, [], [])</l>
+<c>* </c>
+<c>* </c>
+<c>* Display example information.</c>
+<c></c>
+<l>dev_close_window ()</l>
+<l>dev_inspect_ctrl (DLDataset)</l>
+<l>dev_display_example_info_end (OutputName)</l>
+<l>stop ()</l>
+<l>dev_close_window ()</l>
+<c></c>
+<c></c>
+<l>return () </l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="set_suitable_device_in_ocr_handle">
+<interface>
+<ic>
+<par name="DeepOcrHandle" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* Determine deep learning device to work with (prefer GPU over CPU).</c>
+<l>query_available_dl_devices (['runtime', 'runtime'], ['gpu', 'cpu'], DLDeviceHandles)</l>
+<l>if (|DLDeviceHandles| == 0)</l>
+<l>    throw ('No supported device found to continue this example.')</l>
+<l>endif</l>
+<c>* Set recognition_image_width larger for the example to work without memory problems.</c>
+<l>try</l>
+<l>    get_deep_ocr_param (DeepOcrHandle, 'recognition_image_width', RecognitionImageWidthDefault)</l>
+<l>    set_deep_ocr_param (DeepOcrHandle, 'recognition_image_width', 250)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>for Index := 0 to |DLDeviceHandles| - 1 by 1</l>
+<l>    try</l>
+<l>        set_deep_ocr_param (DeepOcrHandle, 'device', DLDeviceHandles[Index])</l>
+<l>        break</l>
+<l>    catch (Exception)</l>
+<l>        if (Index == |DLDeviceHandles| - 1)</l>
+<l>            throw ('Could not set any of the supported devices to continue this example.')</l>
+<l>        endif</l>
+<l>    endtry</l>
+<l>endfor</l>
+<c>* Reset recognition_image_width to the default value.</c>
+<l>try</l>
+<l>    set_deep_ocr_param (DeepOcrHandle, 'recognition_image_width', RecognitionImageWidthDefault)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="set_suitable_device_in_ocr_handle">
+<parameters>
+<parameter id="DeepOcrHandle">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>deep_ocr</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_example_info_start">
+<interface/>
+<body>
+<l>dev_open_window (0, 0, 800, 300, 'black', WindowHandleInfo)</l>
+<l>set_display_font (WindowHandleInfo, 16, 'mono', 'true', 'false')</l>
+<l>Text := 'This example shows how you can get an initial version of a Deep OCR'</l>
+<l>Text[|Text|] := 'dataset for further manual refinement.'</l>
+<l>Text := [Text,'', 'The intended workflow is as follows:']</l>
+<l>Text[|Text|] := '  1) Use this example script to prelabel images using Deep OCR'</l>
+<l>Text[|Text|] := '     and create a DLDataset.'</l>
+<l>Text[|Text|] := '  2) Import the DLDataset into the Deep Learning Tool (DLT)'</l>
+<l>Text[|Text|] := '     and refine the labels.'</l>
+<l>Text[|Text|] := '  3) Export the final DLDataset and use it in the Deep OCR'</l>
+<l>Text[|Text|] := '     training (deep_ocr_recognition_training_workflow.hdev).'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_example_info_start">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="dev_display_example_info_end">
+<interface>
+<ic>
+<par name="OutputName" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>dev_open_window (0, 0, 800, 300, 'black', WindowHandleInfo)</l>
+<l>set_display_font (WindowHandleInfo, 16, 'mono', 'true', 'false')</l>
+<l>Text := 'The dataset has been written to '</l>
+<l>Text[|Text|] := OutputName</l>
+<l>Text[|Text|] := 'This file can now be imported into the Deep Learning Tool (DLT)'</l>
+<l>Text[|Text|] := 'to refine the labels.'</l>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_example_info_end">
+<parameters>
+<parameter id="OutputName"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="ScanRectangle">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="Region" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="Phi" base_type="ctrl" dimension="0"/>
+<par name="Length1" base_type="ctrl" dimension="0"/>
+<par name="Length2" base_type="ctrl" dimension="0"/>
+<par name="RowOffset" base_type="ctrl" dimension="0"/>
+<par name="ColumnOffset" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ResultRow" base_type="ctrl" dimension="0"/>
+<par name="ResultColumn" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* transform</c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>gen_rectangle2 (Rectangle, Row, Column, 0, Length1, Length2)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, Phi, Row, Column, HomMat2DIdentity)</l>
+<l>hom_mat2d_translate_local (HomMat2DIdentity, RowOffset, ColumnOffset, HomMat2DIdentity)</l>
+<l>affine_trans_region (Rectangle, RegionAffineTrans, HomMat2DIdentity, 'nearest_neighbor')</l>
+<c></c>
+<l>* dev_set_color('blue')</l>
+<l>* dev_display (RegionAffineTrans)</l>
+<c></c>
+<l>region_features(RegionAffineTrans, 'row', ResultRow)</l>
+<l>region_features(RegionAffineTrans, 'column', ResultColumn)</l>
+<c></c>
+<l>Region := RegionAffineTrans</l>
+<l>return() </l>
+</body>
+<docu id="ScanRectangle">
+<parameters>
+<parameter id="Column"/>
+<parameter id="ColumnOffset"/>
+<parameter id="Image"/>
+<parameter id="Length1"/>
+<parameter id="Length2"/>
+<parameter id="Phi"/>
+<parameter id="Region">
+<multivalue>false</multivalue>
+<sem_type>region</sem_type>
+</parameter>
+<parameter id="ResultColumn"/>
+<parameter id="ResultRow"/>
+<parameter id="Row"/>
+<parameter id="RowOffset"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="GetDeepOCRHandle">
+<interface>
+<oc>
+<par name="Handle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Handle := 0</l>
+<l>ModelName := 'dldata_eWA/model_eWAbest.hdl'</l>
+<l>ModelFileName := ModelName</l>
+<c></c>
+<l>global tuple Handles</l>
+<c></c>
+<l>try</l>
+<l>    if (Handles != 0)</l>
+<l>        try</l>
+<l>            get_dict_tuple (Handles, ModelName, Handle)</l>
+<l>        catch (Exception)</l>
+<l>            file_exists (ModelFileName, model_exists)</l>
+<l>            if (model_exists)</l>
+<l>                create_deep_ocr ([], [], Handle)</l>
+<l>                set_deep_ocr_param (Handle, 'recognition_model', ModelFileName)</l>
+<l>                set_suitable_device_in_ocr_handle (Handle)</l>
+<c></c>
+<l>                set_dict_tuple (Handles, ModelName, Handle)</l>
+<l>            endif</l>
+<l>        endtry</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict (Handles)</l>
+<c></c>
+<l>    file_exists (ModelFileName, model_exists)</l>
+<l>    if (model_exists)</l>
+<l>        create_deep_ocr ([], [], Handle)</l>
+<l>        set_deep_ocr_param (Handle, 'recognition_model', ModelFileName)</l>
+<l>        set_suitable_device_in_ocr_handle (Handle)</l>
+<c></c>
+<l>        set_dict_tuple (Handles, ModelName, Handle)</l>
+<l>    endif</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="GetDeepOCRHandle">
+<parameters>
+<parameter id="Handle">
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>handle</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="find_data_code">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="SymbolXLDs" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="SymboleType" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Orientation" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>create_data_code_2d_model (SymboleType, 'default_parameters', 'maximum_recognition', DataCodeHandle)</l>
+<c></c>
+<l>set_data_code_2d_param (DataCodeHandle, 'symbol_cols_min', '20')</l>
+<c></c>
+<l>find_data_code_2d (Image, SymbolXLDs, DataCodeHandle, 'stop_after_result_num', 1, ResultHandles, DecodedDataStrings)</l>
+<c></c>
+<l>get_data_code_2d_results (DataCodeHandle, 'all_results', 'orientation', Orientation)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="find_data_code">
+<parameters>
+<parameter id="Image">
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="Orientation">
+<default_type>integer</default_type>
+<type_list>
+<item>integer</item>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="SymbolXLDs">
+<sem_type>xld_cont</sem_type>
+</parameter>
+<parameter id="SymboleType">
+<default_type>string</default_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="rotate_images">
+<interface>
+<ic>
+<par name="ImageFiles" base_type="ctrl" dimension="0"/>
+<par name="ImageDir" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* List all image files in the specified directory.</c>
+<c></c>
+<l>parse_filename (ImageFiles, BaseName, Extension, Directory)</l>
+<c></c>
+<l>for SampleIndex := 0 to |ImageFiles| - 1 by 1</l>
+<l>    read_image(Image, ImageFiles[SampleIndex])</l>
+<c>    </c>
+<c>    * rotate image</c>
+<l>    find_data_code (Image, SymbolXLDs, 'Data Matrix ECC 200', Orientation)</l>
+<l>    if (Orientation == [])</l>
+<l>        continue</l>
+<l>    endif</l>
+<l>    rotate_image (Image, ImageRotate, -Orientation, 'weighted')</l>
+<c>    </c>
+<l>    write_image (ImageRotate, 'tiff', 0, ImageDir + '/' + BaseName[SampleIndex])</l>
+<l>endfor</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="rotate_images">
+<parameters>
+<parameter id="ImageDir">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="ImageFiles">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="check_letters" access="local">
+<interface>
+<ic>
+<par name="String" base_type="ctrl" dimension="0"/>
+<par name="Letters" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Valid" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Valid := 0</l>
+<c></c>
+<l>for Index := 0 to |String| - 1 by 1</l>
+<l>    TmpString := String[Index]</l>
+<c>    </c>
+<l>    for CharIndex := 0 to strlen(TmpString) - 1 by 1</l>
+<l>        char := TmpString{CharIndex}</l>
+<c>        </c>
+<l>        try</l>
+<l>            tuple_regexp_test(Letters, '[' + char + ']', num)</l>
+<l>            if (num == 0)</l>
+<l>                return()</l>
+<l>            endif</l>
+<l>        catch (Exception)</l>
+<l>            return()</l>
+<l>        endtry</l>
+<c></c>
+<l>    endfor</l>
+<l>endfor</l>
+<c></c>
+<l>Valid := 1</l>
+<c></c>
+<c></c>
+</body>
+<docu id="check_letters">
+<parameters>
+<parameter id="Letters">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="String">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Valid"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="convert_hex_to_string">
+<interface>
+<ic>
+<par name="HexString" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Result" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Result := ''</l>
+<c></c>
+<l>length := strlen(HexString)</l>
+<l>for Index := 0 to length - 1 by 4</l>
+<l>    SubString := HexString{Index:Index + 3}</l>
+<l>    SubString := '0x' + SubString</l>
+<c></c>
+<l>    Number := number(SubString)</l>
+<l>    Char := chr(Number)</l>
+<c></c>
+<l>    Result := Result + Char</l>
+<l>endfor</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="convert_hex_to_string">
+<parameters>
+<parameter id="HexString">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Result">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

@@ -1,0 +1,23 @@
+# Ignore everything
+*
+# Don't ignore directories, so we can recurse into them
+!*/
+
+# Files not to ignore
+!.gitignore
+!.gitattributes
+!license_*.dat
+!*.hdev
+!*.md
+!*.json
+
+# Image formats not to ignore
+!*.tif
+!*.tiff
+!*.png
+
+# Image processing models no to ignore
+!*.hdl
+
+# Ignore tmp folders
+**/tmp

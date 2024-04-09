@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="22.11.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>MinScore := 0.7</l>
+<c></c>
+<l>Row := 520</l>
+<l>Column := 580</l>
+<l>Radius := 200</l>
+<c></c>
+<c></c>
+<l>list_image_files('images', 'default', [], ImageFiles)</l>
+<c></c>
+<l>read_image(Image, ImageFiles[1])</l>
+<l>CreateShapeModel (Image, 'dose1', Row, Column, Radius, JobPass)</l>
+<c></c>
+<l>for Index := 1 to |ImageFiles| -1 by 1</l>
+<l>    read_image(Image, ImageFiles[Index])</l>
+<l>    dev_display(Image)</l>
+<c>    </c>
+<l>    FindShapeModel (Image, 'dose1', MinScore, 540 - 500, 960 - 500, 540 + 500, 960 + 500, JobPass, Score)</l>
+<l>endfor</l>
+<c></c>
+<c></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="CreateShapeModel">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="Reference" base_type="ctrl" dimension="0"/>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="Radius" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<c></c>
+<l>global tuple ShapeModelIDs</l>
+<c></c>
+<l>try</l>
+<l>    if (ShapeModelIDs != 0)</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict(ShapeModelIDs)</l>
+<l>endtry</l>
+<c></c>
+<l>gen_circle(ROIModel, Row, Column, Radius)</l>
+<l>reduce_domain (Image, ROIModel, ModelImage)</l>
+<c></c>
+<c>* create model</c>
+<l>create_generic_shape_model(ModelID)</l>
+<c></c>
+<c>* set parameters</c>
+<l>set_generic_shape_model_param (ModelID, 'iso_scale_min', 0.95)</l>
+<l>set_generic_shape_model_param (ModelID, 'iso_scale_max', 1.05)</l>
+<c></c>
+<c>* train model</c>
+<l>train_generic_shape_model(ModelImage, ModelID)</l>
+<c></c>
+<c>* store model</c>
+<l>write_shape_model(ModelID, Reference + '.shm')</l>
+<l>set_dict_tuple(ShapeModelIDs, Reference, ModelID)</l>
+<c></c>
+<c>* display</c>
+<l>dev_set_draw('margin')</l>
+<l>dev_set_color('blue')</l>
+<l>dev_display(ROIModel)</l>
+<c></c>
+<l>get_image_size(Image, Width, Height)</l>
+<l>FindShapeModel (Image, Reference, 0.5, 0, 0, Height, Width, JobPassFind, Score)</l>
+<c></c>
+<c>* output</c>
+<l>JobPass := 1</l>
+</body>
+<docu id="CreateShapeModel">
+<parameters>
+<parameter id="Column">
+<default_type>integer</default_type>
+<default_value>960</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Image">
+<multichannel>optional</multichannel>
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Radius">
+<default_type>integer</default_type>
+<default_value>300</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Reference">
+<default_type>string</default_type>
+<default_value>reference_image</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Row">
+<default_type>integer</default_type>
+<default_value>540</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="FindShapeModel">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="Reference" base_type="ctrl" dimension="0"/>
+<par name="MinScore" base_type="ctrl" dimension="0"/>
+<par name="RowStart" base_type="ctrl" dimension="0"/>
+<par name="ColumnStart" base_type="ctrl" dimension="0"/>
+<par name="RowEnd" base_type="ctrl" dimension="0"/>
+<par name="ColumnEnd" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="Score" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := false</l>
+<l>Score   := 0</l>
+<c></c>
+<l>ModelID := 0</l>
+<l>ModelFileName := Reference + '.shm'</l>
+<l>global tuple ShapeModelIDs</l>
+<c></c>
+<l>try</l>
+<l>    if (ShapeModelIDs != 0)</l>
+<l>        try</l>
+<l>            get_dict_tuple(ShapeModelIDs, Reference, ModelID)</l>
+<l>        catch (Exception)</l>
+<l>            file_exists(ModelFileName, model_exists)</l>
+<l>            if (model_exists)</l>
+<l>                read_shape_model(ModelFileName, ModelID)</l>
+<l>                set_dict_tuple(ShapeModelIDs, Reference, ModelID)</l>
+<l>            endif</l>
+<l>        endtry</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>    create_dict(ShapeModelIDs)</l>
+<c>    </c>
+<l>    file_exists(ModelFileName, model_exists)</l>
+<l>    if (model_exists)</l>
+<l>        read_shape_model(ModelFileName, ModelID)</l>
+<l>        set_dict_tuple(ShapeModelIDs, Reference, ModelID)</l>
+<l>    endif</l>
+<l>endtry</l>
+<c></c>
+<l>if (ModelID == 0)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<c>* set roi</c>
+<l>gen_rectangle1(ROI, RowStart, ColumnStart, RowEnd, ColumnEnd)</l>
+<c></c>
+<l>dev_set_color('blue')</l>
+<l>dev_set_draw('margin')</l>
+<l>dev_display(ROI)</l>
+<c></c>
+<l>set_generic_shape_model_param (ModelID, 'num_matches', 1)</l>
+<l>set_generic_shape_model_param (ModelID, 'min_score', MinScore / 2.0)</l>
+<l>*set_generic_shape_model_param (ModelID, 'greediness', 0.5)</l>
+<c></c>
+<l>reduce_domain (Image, ROI, ImageReduced)</l>
+<l>find_generic_shape_model (ImageReduced, ModelID, MatchResultID, NumMatchResult)</l>
+<c></c>
+<l>if (NumMatchResult &gt; 0)</l>
+<c>    * Check best result</c>
+<l>    get_generic_shape_model_result (MatchResultID, 'best', 'score', BestScore)</l>
+<l>    if (BestScore &gt;= MinScore)</l>
+<c>        * Visualization.</c>
+<l>        get_generic_shape_model_result_object (InstanceObject, MatchResultID, 'best', 'contours')</l>
+<c>        </c>
+<l>        dev_set_color('green')</l>
+<l>        dev_display(InstanceObject)</l>
+<c>    </c>
+<c>        * Result</c>
+<l>        Score := BestScore</l>
+<l>        JobPass := true</l>
+<l>    endif</l>
+<l>endif</l>
+<c></c>
+</body>
+<docu id="FindShapeModel">
+<parameters>
+<parameter id="ColumnEnd">
+<default_type>integer</default_type>
+<default_value>600</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="ColumnStart">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Image">
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+<type_list>
+<item>byte</item>
+</type_list>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<description lang="de_DE">Typ: Bool
+Der Wert gibt an, ob die Erkennung erfolgreich durchgeführt wurde.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+<values>
+<item>0</item>
+</values>
+</parameter>
+<parameter id="MinScore">
+<default_type>real</default_type>
+<default_value>0.5</default_value>
+<description lang="de_DE">Die minimale Wert mit dem das aufgenommen Object mit dem Model übereinstimmten muss um erkannt zu werden.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>1.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Reference">
+<default_type>string</default_type>
+<default_value>reference_image</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="RowEnd">
+<default_type>integer</default_type>
+<default_value>480</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="RowStart">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Score">
+<default_type>real</default_type>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

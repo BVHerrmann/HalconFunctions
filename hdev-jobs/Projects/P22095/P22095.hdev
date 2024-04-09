@@ -1,0 +1,901 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>list_image_files('Bilder/Test/right', 'default', [], ImageFilesRight)</l>
+<l>list_image_files('Bilder/Test/left', 'default', [], ImageFilesLeft)</l>
+<c></c>
+<l>MaxDeviation := 4</l>
+<l>dev_update_off()</l>
+<c></c>
+<l>for ImageIndex := 0 to |ImageFilesRight| - 1 by 1</l>
+<l>    read_image(ImageRight, ImageFilesRight[ImageIndex])</l>
+<l>    read_image(ImageLeft, ImageFilesLeft[ImageIndex])</l>
+<c></c>
+<l>    dev_open_window(0, 800, 512, 512, 'black', WindowHandle)</l>
+<l>    dev_display(ImageRight)</l>
+<l>    CheckPinRight (ImageRight, MaxDeviation, JobPassR, Pin1AngleR, Pin2AngleR)</l>
+<l>    dev_open_window(0, 0, 512, 512, 'black', WindowHandle)</l>
+<l>    dev_display(ImageLeft)    </l>
+<l>    CheckPinLeft (ImageLeft, MaxDeviation, JobPassL, Pin1AngleL, Pin2AngleL)</l>
+<c>    </c>
+<c>    </c>
+<l>    *CalcResultAngle (Pin1AngleR, Pin1AngleL, LenResult, ResultAngle, ResultAngleDeg)</l>
+<l>    *CalcResultAngle (Pin2AngleR, Pin2AngleL, LenResult1, ResultAngle1, ResultAngleDeg1)</l>
+<c>    </c>
+<l>    stop ()</l>
+<l>    dev_close_window()</l>
+<l>    dev_close_window()</l>
+<c>    </c>
+<c>    </c>
+<l>endfor</l>
+<c></c>
+<c></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="list_image_files">
+<interface>
+<ic>
+<par name="ImageDirectory" base_type="ctrl" dimension="0"/>
+<par name="Extensions" base_type="ctrl" dimension="0"/>
+<par name="Options" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ImageFiles" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure returns all files in a given directory</c>
+<c>* with one of the suffixes specified in Extensions.</c>
+<c>* </c>
+<c>* Input parameters:</c>
+<c>* ImageDirectory: Directory or a tuple of directories with images.</c>
+<c>*    If a directory is not found locally, the respective directory</c>
+<c>*    is searched under %HALCONIMAGES%/ImageDirectory.</c>
+<c>*    See the Installation Guide for further information</c>
+<c>*    in case %HALCONIMAGES% is not set.</c>
+<c>* Extensions: A string tuple containing the extensions to be found</c>
+<c>*    e.g. ['png','tif',jpg'] or others</c>
+<c>* If Extensions is set to 'default' or the empty string '',</c>
+<c>*    all image suffixes supported by HALCON are used.</c>
+<c>* Options: as in the operator list_files, except that the 'files'</c>
+<c>*    option is always used. Note that the 'directories' option</c>
+<c>*    has no effect but increases runtime, because only files are</c>
+<c>*    returned.</c>
+<c>* </c>
+<c>* Output parameter:</c>
+<c>* ImageFiles: A tuple of all found image file names</c>
+<c>* </c>
+<l>if (Extensions == [] or Extensions == '' or Extensions == 'default')</l>
+<l>    Extensions := ['ima', 'tif', 'tiff', 'gif', 'bmp', 'jpg', 'jpeg', 'jp2', 'jxr', 'png', 'pcx', 'ras', 'xwd', 'pbm', 'pnm', 'pgm', 'ppm']</l>
+<c>    * </c>
+<l>endif</l>
+<l>ImageFiles := []</l>
+<c>* Loop through all given image directories.</c>
+<l>for ImageDirectoryIndex := 0 to |ImageDirectory| - 1 by 1</l>
+<l>    ImageFilesTmp := []</l>
+<l>    CurrentImageDirectory := ImageDirectory[ImageDirectoryIndex]</l>
+<l>    if (CurrentImageDirectory == '')</l>
+<l>        CurrentImageDirectory := '.'</l>
+<l>    endif</l>
+<l>    get_system ('image_dir', HalconImages)</l>
+<l>    get_system ('operating_system', OS)</l>
+<l>    if (OS{0:2} == 'Win')</l>
+<l>        HalconImages := split(HalconImages,';')</l>
+<l>    else</l>
+<l>        HalconImages := split(HalconImages,':')</l>
+<l>    endif</l>
+<l>    Directories := CurrentImageDirectory</l>
+<l>    for Index := 0 to |HalconImages| - 1 by 1</l>
+<l>        Directories := [Directories,HalconImages[Index] + '/' + CurrentImageDirectory]</l>
+<l>    endfor</l>
+<l>    tuple_strlen (Directories, Length)</l>
+<l>    tuple_gen_const (|Length|, false, NetworkDrive)</l>
+<l>    if (OS{0:2} == 'Win')</l>
+<l>        for Index := 0 to |Length| - 1 by 1</l>
+<l>            if (strlen(Directories[Index]) &gt; 1)</l>
+<l>                tuple_str_first_n (Directories[Index], 1, Substring)</l>
+<l>                if (Substring == '//' or Substring == '\\\\')</l>
+<l>                    NetworkDrive[Index] := true</l>
+<l>                endif</l>
+<l>            endif</l>
+<l>        endfor</l>
+<l>    endif</l>
+<l>    ImageFilesTmp := []</l>
+<l>    for Index := 0 to |Directories| - 1 by 1</l>
+<l>        file_exists (Directories[Index], FileExists)</l>
+<l>        if (FileExists)</l>
+<l>            list_files (Directories[Index], ['files',Options], AllFiles)</l>
+<l>            ImageFilesTmp := []</l>
+<l>            for i := 0 to |Extensions| - 1 by 1</l>
+<l>                tuple_regexp_select (AllFiles, ['.*' + Extensions[i] + '$','ignore_case'], Selection)</l>
+<l>                ImageFilesTmp := [ImageFilesTmp,Selection]</l>
+<l>            endfor</l>
+<l>            tuple_regexp_replace (ImageFilesTmp, ['\\\\', 'replace_all'], '/', ImageFilesTmp)</l>
+<l>            if (NetworkDrive[Index])</l>
+<l>                tuple_regexp_replace (ImageFilesTmp, ['//', 'replace_all'], '/', ImageFilesTmp)</l>
+<l>                ImageFilesTmp := '/' + ImageFilesTmp</l>
+<l>            else</l>
+<l>                tuple_regexp_replace (ImageFilesTmp, ['//', 'replace_all'], '/', ImageFilesTmp)</l>
+<l>            endif</l>
+<l>            break</l>
+<l>        endif</l>
+<l>    endfor</l>
+<c>    * Concatenate the output image paths.</c>
+<l>    ImageFiles := [ImageFiles,ImageFilesTmp]</l>
+<l>endfor</l>
+<l>return ()</l>
+</body>
+<docu id="list_image_files">
+<abstract lang="en_US">This procedure returns all files in a given directory ImageDirectory with one of the suffixes specified in Extensions.
+
+It is possible to use a tuple with multiple directories as input ImageDirectory. If a directory is not found locally, the respective directory is searched under %HALCONIMAGES%/ImageDirectory. See the `Installation Guide` for further information in case %HALCONIMAGES% is not set.
+
+If Extensions is set to *'default'* or the empty string *''*, all image suffixes supported by HALCON are used.
+
+The parameter Options is used as in the operator &lt;op:list_files&gt; (see &lt;op:list_files&gt; for details), except that the *'files'* option is always used. Note that the *'directories'* option has no effect but increases runtime, because only files are returned.</abstract>
+<alternatives>
+<item>list_files</item>
+</alternatives>
+<chapters lang="de_DE">
+<item>Datei</item>
+<item>Sonstiges</item>
+</chapters>
+<chapters lang="en_US">
+<item>File</item>
+<item>Misc</item>
+</chapters>
+<example lang="en_US">list_image_files ('.',[] ,[] , ImageFiles)
+for Index := 1 to |ImageFiles|  by 1
+    read_image (Image,ImageFiles[Index-1])
+*     do something
+endfor</example>
+<keywords lang="de_DE">
+<item>Bilddateien auflisten</item>
+</keywords>
+<keywords lang="en_US">
+<item>list image files</item>
+</keywords>
+<library lang="en_US">MVTec Standard Procedures</library>
+<predecessor>
+<item>list_files</item>
+</predecessor>
+<see_also>
+<item>list_files</item>
+</see_also>
+<short>Get all image files under the given path</short>
+<short lang="en_US">Get all image files under the given path</short>
+<successor>
+<item>read_image</item>
+</successor>
+<parameters>
+<parameter id="Extensions">
+<default_type>string</default_type>
+<default_value>'default'</default_value>
+<description lang="en_US">A string tuple containing the extensions to be found e.g. ['png','tif',jpg'] or others</description>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+<values>
+<item>'ima'</item>
+<item>'bmp'</item>
+<item>'jpg'</item>
+<item>'png'</item>
+<item>'tiff'</item>
+<item>'tif'</item>
+<item>'gif'</item>
+<item>'jpeg'</item>
+<item>'pcx'</item>
+<item>'pgm'</item>
+<item>'ppm'</item>
+<item>'pbm'</item>
+<item>'xwd'</item>
+<item>'pnm'</item>
+</values>
+</parameter>
+<parameter id="ImageDirectory">
+<default_type>string</default_type>
+<description lang="en_US">The image directory</description>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<sem_type>filename.dir</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="ImageFiles">
+<default_type>string</default_type>
+<description lang="en_US">A tuple of all found image file names</description>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<sem_type>filename.read</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Options">
+<default_type>string</default_type>
+<default_value>[]</default_value>
+<description lang="en_US">Processing options</description>
+<multivalue>optional</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+<values>
+<item>'recursive'</item>
+<item>'follow_links'</item>
+<item>'max_depth 5'</item>
+</values>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="CheckPinRight">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="MaxAngleDeviation" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="Pin1Angle" base_type="ctrl" dimension="0"/>
+<par name="Pin2Angle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<c></c>
+<l>get_image_size(Image, Width, Height)</l>
+<c></c>
+<c>* 1. Find Reference Line</c>
+<c></c>
+<l>create_metrology_model(MetrologyHandle)</l>
+<l>set_metrology_model_image_size(MetrologyHandle, Width, Height)</l>
+<c></c>
+<l>add_metrology_object_line_measure(MetrologyHandle, 0, Width / 2, Height / 3, Width / 2, Width / 4, 5, 1, 40, [], [], Index)</l>
+<l>apply_metrology_model(Image, MetrologyHandle)</l>
+<c></c>
+<l>* get_metrology_object_result_contour(Contour, MetrologyHandle, Index, 'all', 1.5)</l>
+<l>* dev_set_pen(1, 'blue')</l>
+<l>* dev_display(Contour)</l>
+<c></c>
+<c>* check for result</c>
+<l>get_metrology_object_result (MetrologyHandle, 0, 'all', 'result_type', 'all_param', Parameter)</l>
+<l>if (|Parameter| == 0)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'row_begin', LineRowStart)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'row_end', LineRowEnd)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'column_begin', LineColumnStart)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'column_end', LineColumnEnd)</l>
+<c></c>
+<l>line_orientation(LineColumnEnd, LineColumnEnd, LineColumnEnd, LineColumnEnd, LinePhi)</l>
+<c></c>
+<c>* display reference line</c>
+<l>LineRowOrigin := 0</l>
+<l>LineColumnOrigin := LineColumnStart + (tan(LinePhi) * LineRowStart)</l>
+<l>LineRowOriginEnd := Height</l>
+<l>LineColumnOriginEnd := LineColumnEnd + (tan(LinePhi) * (Height - LineRowEnd))</l>
+<c></c>
+<l>gen_region_line(line, LineRowOrigin, LineColumnOrigin, LineRowOriginEnd, LineColumnOriginEnd)</l>
+<l>dev_set_pen(1, 'blue')</l>
+<l>dev_display(line)</l>
+<c></c>
+<c>* 2. Find Pin Mounting </c>
+<c></c>
+<l>AmplitudeThreshold := 40</l>
+<l>rectangle1_to_rectangle2(0, LineColumnOrigin - 10, Height, LineColumnOriginEnd - 10, MeasureRow, MeasureColumn, MeasurePhi, MeasureLen1, MeasureLen2)</l>
+<c></c>
+<l>gen_measure_rectangle2 (MeasureRow, MeasureColumn, MeasurePhi, MeasureLen1, MeasureLen2, 1632, 1248, 'nearest_neighbor', MeasureHandle)</l>
+<l>measure_pairs (Image, MeasureHandle, 1, 60, 'negative', 'all', RowEdgeFirst, ColumnEdgeFirst, AmplitudeFirst, RowEdgeSecond, ColumnEdgeSecond, AmplitudeSecond, IntraDistance, InterDistance)</l>
+<c></c>
+<l>if (|RowEdgeFirst| &lt; 2)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>dev_get_window(WindowHandle)</l>
+<l>dev_set_pen(1, 'blue')</l>
+<c></c>
+<l>gen_cross_contour_xld (CrossFirst, RowEdgeFirst, ColumnEdgeFirst, 25, 0)</l>
+<l>dev_display(CrossFirst)</l>
+<l>gen_cross_contour_xld (CrossSecond, RowEdgeSecond, ColumnEdgeSecond, 25, 0)</l>
+<l>dev_display(CrossSecond)</l>
+<c></c>
+<c>* 3. Find Pins</c>
+<c></c>
+<l>RowMid := (sum(RowEdgeFirst) + sum(RowEdgeSecond)) / (|RowEdgeFirst| + |RowEdgeSecond|)</l>
+<l>ColumnMid := (sum(ColumnEdgeFirst) + sum(ColumnEdgeSecond)) / (|ColumnEdgeFirst| + |ColumnEdgeSecond|)</l>
+<c></c>
+<l>find_pin (Image, 0, RowMid, LineColumnEnd - 250, LineColumnEnd  - 300, Row1, Column1, Phi1, Length1_1, Length2_1, isValid1)</l>
+<l>find_pin (Image, RowMid, Height, LineColumnEnd - 250, LineColumnEnd  - 300, Row2, Column2, Phi2, Length1_2, Length2_2, isValid2)</l>
+<c></c>
+<l>line_orientation(LineRowStart, LineColumnStart, LineRowEnd, LineColumnEnd, LineAngle)</l>
+<c></c>
+<l>try </l>
+<l>    query_font(WindowHandle, font)</l>
+<l>    set_font(WindowHandle, font[0] + '-Bold' + '-18')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>if (isValid1)    </l>
+<c>    * create an imaginary center line of the rectangle</c>
+<l>    Row1_end := Row1 + (sin(Phi1) * 100)</l>
+<l>    Column1_end := Column1 - (cos(Phi1) * 100)</l>
+<c>    </c>
+<l>    gen_region_line(line, Row1, Column1, Row1_end, Column1_end)</l>
+<l>    dev_set_pen(1, 'yellow')</l>
+<l>    dev_display(line)</l>
+<c>    </c>
+<l>    angle_ll(LineRowStart, LineColumnStart, LineRowEnd, LineColumnEnd, Row1, Column1, Row1_end, Column1_end, Pin1AngleTop)</l>
+<l>    Pin1Angle := 90 + deg(Pin1AngleTop)</l>
+<c>    </c>
+<l>    if (abs(Pin1Angle) &gt; MaxAngleDeviation)</l>
+<l>        dev_set_color('red')</l>
+<l>    else</l>
+<l>        dev_set_color('green')</l>
+<l>    endif</l>
+<l>    dev_set_draw('margin')</l>
+<l>    gen_rectangle2_contour_xld(Rectangle, Row1, Column1, Phi1, Length1_1, Length2_1)</l>
+<l>    dev_display(Rectangle)</l>
+<c>    </c>
+<l>    dev_disp_text('Pin 1', 'image', Row1, 30, 'black', ['box'], [false])</l>
+<l>endif</l>
+<c></c>
+<c></c>
+<l>if (isValid2)    </l>
+<c>    * create an imaginary center line of the rectangle</c>
+<l>    Row2_end := Row2 + (sin(Phi2) * 100)</l>
+<l>    Column2_end := Column2 - (cos(Phi2) * 100)</l>
+<c>    </c>
+<l>    gen_region_line(line, Row2, Column2, Row2_end, Column2_end)</l>
+<l>    dev_set_pen(1, 'yellow')</l>
+<l>    dev_display(line)</l>
+<c>    </c>
+<l>    angle_ll(LineRowStart, LineColumnStart, LineRowEnd, LineColumnEnd, Row2, Column2, Row2_end, Column2_end, Pin2AngleTop)</l>
+<l>    Pin2Angle := 90 + deg(Pin2AngleTop)</l>
+<c>    </c>
+<l>    if (abs(Pin2Angle) &gt; MaxAngleDeviation)</l>
+<l>        dev_set_color('red')</l>
+<l>    else</l>
+<l>        dev_set_color('green')</l>
+<l>    endif</l>
+<l>    dev_set_draw('margin')</l>
+<l>    gen_rectangle2_contour_xld(Rectangle, Row2, Column2, Phi2, Length1_2, Length2_2)</l>
+<l>    dev_display(Rectangle)</l>
+<c>    </c>
+<l>    dev_disp_text('Pin 2', 'image', Row2, 30, 'black', ['box'], [false])</l>
+<l>endif</l>
+<c></c>
+<l>if ( not(isValid1) or not(isValid2))</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>JobPass := abs(Pin1Angle) &lt;= MaxAngleDeviation and abs(Pin2Angle) &lt;= MaxAngleDeviation</l>
+<c></c>
+<l>return()</l>
+</body>
+<docu id="CheckPinRight">
+<parameters>
+<parameter id="Image">
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="MaxAngleDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>90</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Pin1Angle">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>angle</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>90</value_max>
+<value_min>-90</value_min>
+</parameter>
+<parameter id="Pin2Angle">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>angle</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>90</value_max>
+<value_min>-90</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="find_pin">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="RowStart" base_type="ctrl" dimension="0"/>
+<par name="RowEnd" base_type="ctrl" dimension="0"/>
+<par name="ColumnStart" base_type="ctrl" dimension="0"/>
+<par name="ColumnEnd" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="Phi" base_type="ctrl" dimension="0"/>
+<par name="Length1" base_type="ctrl" dimension="0"/>
+<par name="Length2" base_type="ctrl" dimension="0"/>
+<par name="isValid" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>isValid := 0</l>
+<c></c>
+<l>Row := 0</l>
+<l>Column := 0</l>
+<l>Phi := 0</l>
+<l>Length1 := 0</l>
+<l>Length2 := 0</l>
+<c></c>
+<l>get_image_size(Image,Width, Height)</l>
+<c></c>
+<l>create_metrology_model(MetrologyHandle)</l>
+<l>set_metrology_model_image_size(MetrologyHandle, Width, Height)</l>
+<l>add_metrology_object_line_measure (MetrologyHandle, RowStart + (RowEnd - RowStart) / 2, ColumnStart, RowStart + (RowEnd - RowStart) / 2, ColumnEnd, (RowEnd - RowStart) / 2, 5, 1, 50, ['measure_transition'], ['positive'], Index1)</l>
+<l>add_metrology_object_line_measure (MetrologyHandle,RowStart + (RowEnd - RowStart) / 2, ColumnStart, RowStart + (RowEnd - RowStart) / 2, ColumnEnd, (RowEnd - RowStart) / 2, 5, 1, 50, ['measure_transition'], ['negative'], Index2)</l>
+<l>apply_metrology_model (Image, MetrologyHandle)</l>
+<c></c>
+<l>* get_metrology_object_measures (Contours, MetrologyHandle, 'all', 'all', Row1, Column1)</l>
+<l>* dev_display(Contours)</l>
+<l>* get_metrology_object_result_contour (Contour, MetrologyHandle, Index1, 'all', 1.5)</l>
+<l>* dev_display(Contour)</l>
+<l>* get_metrology_object_result_contour (Contour1, MetrologyHandle, Index2, 'all', 1.5)</l>
+<l>* dev_display(Contour1)</l>
+<c></c>
+<l>get_metrology_object_result (MetrologyHandle, Index1, 'all', 'result_type', 'all_param', ParameterTop)</l>
+<l>get_metrology_object_result (MetrologyHandle, Index2, 'all', 'result_type', 'all_param', ParameterButtom)</l>
+<c></c>
+<l>if (|ParameterTop| &lt; 4 or |ParameterButtom| &lt; 4)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>PinRowMid := (ParameterButtom[0] + ParameterTop[0]) / 2</l>
+<l>PinColumnMid := (ParameterButtom[1] + ParameterTop[1]) / 2</l>
+<l>PinRowMid1 := (ParameterButtom[2] + ParameterTop[2]) / 2</l>
+<l>PinColumnMid1 := (ParameterButtom[3] + ParameterTop[3]) / 2</l>
+<c></c>
+<l>* gen_region_line(line, PinRowMid1, PinColumnMid1, PinRowMid, PinColumnMid)</l>
+<l>* gen_contour_region_xld (line, line_xld, 'border')</l>
+<l>* dev_display(line_xld)</l>
+<c></c>
+<l>line_orientation(PinRowMid1, PinColumnMid1, PinRowMid, PinColumnMid, TmpCtrl_Phi)</l>
+<c></c>
+<l>create_metrology_model(MetrologyHandle)</l>
+<l>set_metrology_model_image_size(MetrologyHandle, Width, Height)</l>
+<c></c>
+<l>add_metrology_object_rectangle2_measure (MetrologyHandle, PinRowMid1, PinColumnMid1, TmpCtrl_Phi, 105, 40, 40, 5, 1, 30, [], [], Index)</l>
+<c></c>
+<l>apply_metrology_model(Image, MetrologyHandle)</l>
+<c></c>
+<l>get_metrology_object_result (MetrologyHandle, 0, 'all', 'result_type', 'all_param', Parameter)</l>
+<c></c>
+<l>* get_metrology_object_measures (Contours, MetrologyHandle, 'all', 'all', Row1, Column1)</l>
+<l>* dev_display(Contours)</l>
+<c></c>
+<l>isValid := |Parameter| == 5</l>
+<c></c>
+<l>if (not(isValid)) </l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'row', Row)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'column', Column)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'phi', Phi)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'length1', Length1)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'length2', Length2)</l>
+<c></c>
+<c></c>
+</body>
+<docu id="find_pin">
+<parameters>
+<parameter id="Column"/>
+<parameter id="ColumnEnd"/>
+<parameter id="ColumnStart"/>
+<parameter id="Image"/>
+<parameter id="Length1"/>
+<parameter id="Length2"/>
+<parameter id="Phi"/>
+<parameter id="Row"/>
+<parameter id="RowEnd"/>
+<parameter id="RowStart"/>
+<parameter id="isValid"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="CheckPinLeft">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="MaxAngleDeviation" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="Pin1Angle" base_type="ctrl" dimension="0"/>
+<par name="Pin2Angle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<c></c>
+<l>get_image_size(Image, Width, Height)</l>
+<c></c>
+<c>* 1. Find Reference Line</c>
+<c></c>
+<l>create_metrology_model(MetrologyHandle)</l>
+<l>set_metrology_model_image_size(MetrologyHandle, Width, Height)</l>
+<c></c>
+<l>add_metrology_object_line_measure(MetrologyHandle, 0, Width / 2, Height / 3, Width / 2, Width / 4, 5, 1, 40, [], [], Index)</l>
+<l>apply_metrology_model(Image, MetrologyHandle)</l>
+<c></c>
+<l>* get_metrology_object_model_contour (Contour, MetrologyHandle, Index,1.5)</l>
+<l>* dev_set_pen(1, 'blue')</l>
+<l>* dev_display(Contour)</l>
+<c></c>
+<c>* check for result</c>
+<l>get_metrology_object_result (MetrologyHandle, 0, 'all', 'result_type', 'all_param', Parameter)</l>
+<l>if (|Parameter| == 0)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'row_begin', LineRowStart)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'row_end', LineRowEnd)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'column_begin', LineColumnStart)</l>
+<l>get_metrology_object_result(MetrologyHandle, 0, 'all', 'result_type', 'column_end', LineColumnEnd)</l>
+<c></c>
+<l>line_orientation(LineColumnEnd, LineColumnEnd, LineColumnEnd, LineColumnEnd, LinePhi)</l>
+<c></c>
+<c>* display reference line</c>
+<l>LineRowOrigin := 0</l>
+<l>LineColumnOrigin := LineColumnStart + (tan(LinePhi) * LineRowStart)</l>
+<l>LineRowOriginEnd := Height</l>
+<l>LineColumnOriginEnd := LineColumnEnd + (tan(LinePhi) * (Height - LineRowEnd))</l>
+<c></c>
+<l>gen_region_line(line, LineRowOrigin, LineColumnOrigin, LineRowOriginEnd, LineColumnOriginEnd)</l>
+<l>dev_set_pen(1, 'blue')</l>
+<l>dev_display(line)</l>
+<c></c>
+<c>* 2. Find Pin Mounting </c>
+<c></c>
+<l>AmplitudeThreshold := 40</l>
+<l>rectangle1_to_rectangle2(0, LineColumnOrigin + 10, Height, LineColumnOriginEnd + 10, MeasureRow, MeasureColumn, MeasurePhi, MeasureLen1, MeasureLen2)</l>
+<c></c>
+<l>gen_measure_rectangle2 (MeasureRow, MeasureColumn, MeasurePhi, MeasureLen1, MeasureLen2, 1632, 1248, 'nearest_neighbor', MeasureHandle)</l>
+<l>measure_pairs (Image, MeasureHandle, 1, 60, 'negative', 'all', RowEdgeFirst, ColumnEdgeFirst, AmplitudeFirst, RowEdgeSecond, ColumnEdgeSecond, AmplitudeSecond, IntraDistance, InterDistance)</l>
+<c></c>
+<l>if (|RowEdgeFirst| &lt; 2)</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>dev_get_window(WindowHandle)</l>
+<l>dev_set_pen(1, 'blue')</l>
+<c></c>
+<l>gen_cross_contour_xld (CrossFirst, RowEdgeFirst, ColumnEdgeFirst, 25, 0)</l>
+<l>dev_display(CrossFirst)</l>
+<l>gen_cross_contour_xld (CrossSecond, RowEdgeSecond, ColumnEdgeSecond, 25, 0)</l>
+<l>dev_display(CrossSecond)</l>
+<c></c>
+<c>* 3. Find Pins</c>
+<c></c>
+<l>RowMid := (sum(RowEdgeFirst) + sum(RowEdgeSecond)) / (|RowEdgeFirst| + |RowEdgeSecond|)</l>
+<l>ColumnMid := (sum(ColumnEdgeFirst) + sum(ColumnEdgeSecond)) / (|ColumnEdgeFirst| + |ColumnEdgeSecond|)</l>
+<c></c>
+<l>find_pin (Image, RowMid, Height, LineColumnEnd + 250, LineColumnEnd  + 300, Row1, Column1, Phi1, Length1_1, Length2_1, isValid1)</l>
+<l>find_pin (Image, 0, RowMid, LineColumnEnd + 250, LineColumnEnd  + 300, Row2, Column2, Phi2, Length1_2, Length2_2, isValid2)</l>
+<c></c>
+<l>line_orientation(LineRowStart, LineColumnStart, LineRowEnd, LineColumnEnd, LineAngle)</l>
+<c></c>
+<l>try </l>
+<l>    query_font(WindowHandle, font)</l>
+<l>    set_font(WindowHandle, font[0] + '-Bold' + '-18')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>if (isValid1)</l>
+<c>    * create an imaginary center line of the rectangle</c>
+<l>    Row1_end := Row1 - (sin(Phi1) * 100)</l>
+<l>    Column1_end := Column1 + (cos(Phi1) * 100)</l>
+<c>    </c>
+<l>    gen_region_line(line, Row1, Column1, Row1_end, Column1_end)</l>
+<l>    dev_set_pen(1, 'yellow')</l>
+<l>    dev_display(line)</l>
+<c>    </c>
+<l>    angle_ll(LineRowStart, LineColumnStart, LineRowEnd, LineColumnEnd, Row1, Column1, Row1_end, Column1_end, Pin1AngleTop)</l>
+<l>    Pin1Angle := deg(Pin1AngleTop) - 90 </l>
+<c>    </c>
+<l>    if (abs(Pin1Angle) &gt; MaxAngleDeviation)</l>
+<l>        dev_set_color('red')</l>
+<l>    else</l>
+<l>        dev_set_color('green')</l>
+<l>    endif</l>
+<l>    dev_set_draw('margin')</l>
+<l>    gen_rectangle2_contour_xld(Rectangle, Row1, Column1, Phi1, Length1_1, Length2_1)</l>
+<l>    dev_display(Rectangle)</l>
+<c>    </c>
+<l>    dev_disp_text('Pin 1', 'image', Row1, Width - 180, 'black', ['box'], [false])</l>
+<l>endif</l>
+<c></c>
+<c></c>
+<l>if (isValid2)</l>
+<c>    * create an imaginary center line of the rectangle</c>
+<l>    Row2_end := Row2 - (sin(Phi2) * 100)</l>
+<l>    Column2_end := Column2 + (cos(Phi2) * 100)</l>
+<c>    </c>
+<l>    gen_region_line(line, Row2, Column2, Row2_end, Column2_end)</l>
+<l>    dev_set_pen(1, 'yellow')</l>
+<l>    dev_display(line)</l>
+<c>    </c>
+<l>    angle_ll(LineRowStart, LineColumnStart, LineRowEnd, LineColumnEnd, Row2, Column2, Row2_end, Column2_end, Pin2AngleTop)    </l>
+<l>    Pin2Angle := deg(Pin2AngleTop) - 90   </l>
+<c>    </c>
+<l>    if (abs(Pin2Angle) &gt; MaxAngleDeviation)</l>
+<l>        dev_set_color('red')</l>
+<l>    else</l>
+<l>        dev_set_color('green')</l>
+<l>    endif</l>
+<l>    dev_set_draw('margin')</l>
+<l>    gen_rectangle2_contour_xld(Rectangle, Row2, Column2, Phi2, Length1_2, Length2_2)</l>
+<l>    dev_display(Rectangle)</l>
+<c>    </c>
+<l>    dev_disp_text('Pin 2', 'image', Row2, Width - 180, 'black', ['box'], [false])</l>
+<l>endif</l>
+<c></c>
+<l>if ( not(isValid1) or not(isValid2))</l>
+<l>    return()</l>
+<l>endif</l>
+<c></c>
+<l>JobPass := abs(Pin1Angle) &lt;= MaxAngleDeviation and abs(Pin2Angle) &lt;= MaxAngleDeviation</l>
+<c></c>
+<l>return()</l>
+</body>
+<docu id="CheckPinLeft">
+<parameters>
+<parameter id="Image">
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="MaxAngleDeviation">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>90</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="Pin1Angle">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>angle</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>90</value_max>
+<value_min>-90</value_min>
+</parameter>
+<parameter id="Pin2Angle">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>angle</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>90</value_max>
+<value_min>-90</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="rectangle1_to_rectangle2">
+<interface>
+<ic>
+<par name="RowStart" base_type="ctrl" dimension="0"/>
+<par name="ColumnStart" base_type="ctrl" dimension="0"/>
+<par name="RowEnd" base_type="ctrl" dimension="0"/>
+<par name="ColumnEnd" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="Phi" base_type="ctrl" dimension="0"/>
+<par name="Len1" base_type="ctrl" dimension="0"/>
+<par name="Len2" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l as_id="measure1d" as_name="Measure 01" as_grp="[2,3]" as_ord="2">Row := 0.5 * (RowStart + RowEnd)</l>
+<l as_id="measure1d" as_name="Measure 01" as_grp="[2,3]" as_ord="3">Column := 0.5 * (ColumnStart + ColumnEnd)</l>
+<l as_id="measure1d" as_name="Measure 01" as_grp="[2,3]" as_ord="4">TmpCtrl_Dr := RowStart - RowEnd</l>
+<l as_id="measure1d" as_name="Measure 01" as_grp="[2,3]" as_ord="5">TmpCtrl_Dc := ColumnEnd - ColumnStart</l>
+<l as_id="measure1d" as_name="Measure 01" as_grp="[2,3]" as_ord="6">Phi := atan2(TmpCtrl_Dr, TmpCtrl_Dc)</l>
+<l as_id="measure1d" as_name="Measure 01" as_grp="[2,3]" as_ord="7">Len1 := abs(TmpCtrl_Dr) / 2</l>
+<l as_id="measure1d" as_name="Measure 01" as_grp="[2,3]" as_ord="8">Len2 := abs(TmpCtrl_Dc) / 2</l>
+<l>return ()</l>
+</body>
+<docu id="rectangle1_to_rectangle2">
+<parameters>
+<parameter id="Column">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="ColumnEnd">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="ColumnStart">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Len1">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Len2">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Phi">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="Row">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="RowEnd">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="RowStart">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_set_pen">
+<interface>
+<ic>
+<par name="width" base_type="ctrl" dimension="0"/>
+<par name="color" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>dev_set_line_width(width)</l>
+<l>dev_set_color(color)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_set_pen">
+<parameters>
+<parameter id="color">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="width">
+<default_type>integer</default_type>
+<default_value>1</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>1</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="CalcResultAngle">
+<interface>
+<ic>
+<par name="Angle1" base_type="ctrl" dimension="0"/>
+<par name="Angle2" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="LenResult" base_type="ctrl" dimension="0"/>
+<par name="ResultAngle" base_type="ctrl" dimension="0"/>
+<par name="ResultAngleDeg" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>PinLength := 6.17 - 2.3</l>
+<c></c>
+<l>tan1 := tan(rad(Angle1)) * PinLength</l>
+<l>tan2 := tan(rad(Angle2)) * PinLength</l>
+<c></c>
+<l>len1 := pow(tan1, 2)</l>
+<l>len2 := pow(tan2, 2)</l>
+<c></c>
+<l>LenResult := sqrt(len1 + len2)</l>
+<l>ResultAngle := atan2(LenResult, PinLength)</l>
+<l>ResultAngleDeg := deg(ResultAngle)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="CalcResultAngle">
+<parameters>
+<parameter id="Angle1"/>
+<parameter id="Angle2"/>
+<parameter id="LenResult"/>
+<parameter id="ResultAngle"/>
+<parameter id="ResultAngleDeg"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

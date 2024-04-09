@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_image(Image, 'Images/greyIO_1')</l>
+<c></c>
+<l>ORingRoiX:=870</l>
+<l>ORingRoiY:=430</l>
+<l>RoiWidth:=450</l>
+<l>RoiHeight:=100</l>
+<c></c>
+<l>PartRoiX:=ORingRoiX</l>
+<l>PartRoiY:=ORingRoiY - 200</l>
+<l>*SymboType:='Data Matrix ECC 200'</l>
+<l>SymboType:='QR Code'</l>
+<l>*check_oring (Image, PartRoiX, PartRoiY, RoiWidth, RoiHeight, ORingRoiX, ORingRoiY, JobPass, PartValue, ORingValue)</l>
+<l>check_oring_and_dmc (Image, PartRoiX, PartRoiY, RoiWidth, RoiHeight, ORingRoiX, ORingRoiY, SymboType, JobPass, PartValue, ORingValue, ResultCode)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="find_data_matrix">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="SymbolType" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="ResultCode" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<l>ResultCode := ''</l>
+<l>NumberOccurences := 1</l>
+<c></c>
+<c>* find code</c>
+<l>create_data_code_2d_model (SymbolType, 'default_parameters', 'maximum_recognition', DataCodeHandleStandard)</l>
+<l>find_data_code_2d (Image, SymbolXLDs, DataCodeHandleStandard, 'stop_after_result_num', NumberOccurences, ResultHandles, DecodedDataStrings)</l>
+<c></c>
+<c>* visualize</c>
+<l>dev_set_color ('forest green')</l>
+<l>dev_display (SymbolXLDs)</l>
+<c></c>
+<l>if (|DecodedDataStrings| &gt; 0)</l>
+<l>for i := 0 to |ResultHandles| - 1 by 1</l>
+<l>    select_obj (SymbolXLDs, SymbolXLD, i+1)</l>
+<l>    get_contour_xld (SymbolXLD, Row, Col)</l>
+<l>    *gen_cross_contour_xld(CrossXld, min(Row), min(Col), 70, 0)</l>
+<l>    xpos[i]:=min(Col)</l>
+<l>endfor</l>
+<c></c>
+<l>Index0IsLeft:=false</l>
+<l>if(|ResultHandles| == 2)</l>
+<l>    if(xpos[1]&gt;xpos[0])</l>
+<l>        Index0IsLeft:=true</l>
+<l>    endif</l>
+<l>    JobPass := 1</l>
+<l>endif</l>
+<c></c>
+<l>if(NumberOccurences == 1)</l>
+<l>    JobPass := 1</l>
+<l>endif</l>
+<l>ResultSeperator:=' | '</l>
+<c>* result ouput</c>
+<l>if (|ResultHandles| == 1) </l>
+<l>    ResultCode := DecodedDataStrings</l>
+<l>else</l>
+<l>    if(Index0IsLeft)</l>
+<l>        ResultCode := DecodedDataStrings[0] + ResultSeperator + DecodedDataStrings[1]</l>
+<l>    else</l>
+<l>        ResultCode := DecodedDataStrings[1] + ResultSeperator + DecodedDataStrings[0]</l>
+<l>    endif</l>
+<l>endif</l>
+<l>endif</l>
+<c></c>
+<c></c>
+</body>
+<docu id="find_data_matrix">
+<parameters>
+<parameter id="Image">
+<multivalue>false</multivalue>
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="ResultCode">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="SymbolType">
+<default_type>string</default_type>
+<default_value>Data Matrix ECC 200</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="calculate_mean_gray" access="local">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="RoiXPos" base_type="ctrl" dimension="0"/>
+<par name="RoiYPos" base_type="ctrl" dimension="0"/>
+<par name="RoiWidth" base_type="ctrl" dimension="0"/>
+<par name="RoiHeight" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="GrayValue" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>Phi := rad(0)</l>
+<l>SubRoiWidth := RoiWidth/3</l>
+<l>SubRoiLength1 := SubRoiWidth/2</l>
+<l>SubRoiLength2 := RoiHeight/2</l>
+<c></c>
+<l>centerRow := RoiYPos + SubRoiLength2</l>
+<l>centerCol := RoiXPos + SubRoiLength1</l>
+<l>gen_rectangle2(LeftRectangle,centerRow, centerCol, Phi, SubRoiLength1, SubRoiLength2)</l>
+<l>gray_features(LeftRectangle,Image, 'mean',GrayValueLeft)</l>
+<l>centerCol:=centerCol + SubRoiWidth</l>
+<l>gen_rectangle2(MiddleRectangle,centerRow, centerCol, Phi, SubRoiLength1, SubRoiLength2)</l>
+<l>centerCol:=centerCol + SubRoiWidth</l>
+<l>gen_rectangle2(RightRectangle,centerRow, centerCol, Phi, SubRoiLength1, SubRoiLength2)</l>
+<l>gray_features(RightRectangle,Image, 'mean',GrayValueRight)</l>
+<l>dev_set_color ('forest green')</l>
+<l>dev_set_draw('margin')</l>
+<l>dev_display(LeftRectangle)</l>
+<l>dev_display(RightRectangle)</l>
+<l>dev_display(MiddleRectangle)</l>
+<l>GrayValue := (GrayValueLeft + GrayValueRight)/2</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+</body>
+<docu id="calculate_mean_gray">
+<parameters>
+<parameter id="GrayValue">
+<default_type>real</default_type>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="Image">
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="RoiHeight">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="RoiWidth">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="RoiXPos">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+<parameter id="RoiYPos">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>0</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="check_oring">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="PartRoiX" base_type="ctrl" dimension="0"/>
+<par name="PartRoiY" base_type="ctrl" dimension="0"/>
+<par name="RoiWidth" base_type="ctrl" dimension="0"/>
+<par name="RoiHeight" base_type="ctrl" dimension="0"/>
+<par name="ORingRoiX" base_type="ctrl" dimension="0"/>
+<par name="ORingRoiY" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="PartValue" base_type="ctrl" dimension="0"/>
+<par name="ORingValue" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := false</l>
+<l>PartValue := 0</l>
+<l>ORingValue := 0</l>
+<l>calculate_mean_gray (Image, PartRoiX, PartRoiY, RoiWidth, RoiHeight, PartValue)</l>
+<l>calculate_mean_gray(Image,ORingRoiX,ORingRoiY,RoiWidth,RoiHeight,ORingValue)</l>
+<l>JobPass := true</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+</body>
+<docu id="check_oring">
+<parameters>
+<parameter id="Image"/>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="ORingRoiX">
+<default_type>integer</default_type>
+<default_value>870</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="ORingRoiY">
+<default_type>integer</default_type>
+<default_value>430</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="ORingValue">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="PartRoiX">
+<default_type>integer</default_type>
+<default_value>870</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="PartRoiY">
+<default_type>integer</default_type>
+<default_value>230</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="PartValue">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="RoiHeight">
+<default_type>integer</default_type>
+<default_value>100</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="RoiWidth">
+<default_type>integer</default_type>
+<default_value>450</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="check_oring_and_dmc">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="PartRoiX" base_type="ctrl" dimension="0"/>
+<par name="PartRoiY" base_type="ctrl" dimension="0"/>
+<par name="RoiWidth" base_type="ctrl" dimension="0"/>
+<par name="RoiHeight" base_type="ctrl" dimension="0"/>
+<par name="ORingRoiX" base_type="ctrl" dimension="0"/>
+<par name="ORingRoiY" base_type="ctrl" dimension="0"/>
+<par name="SymbolTypeDMC" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="JobPass" base_type="ctrl" dimension="0"/>
+<par name="PartValue" base_type="ctrl" dimension="0"/>
+<par name="ORingValue" base_type="ctrl" dimension="0"/>
+<par name="ResultCode" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>JobPass := 0</l>
+<l>PartValue := 0</l>
+<l>ORingValue := 0</l>
+<l>check_oring (Image, PartRoiX, PartRoiY, RoiWidth, RoiHeight, ORingRoiX, ORingRoiY, JobPass, PartValue, ORingValue)</l>
+<l>find_data_matrix(Image,SymbolTypeDMC,JobPass,ResultCode)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+</body>
+<docu id="check_oring_and_dmc">
+<parameters>
+<parameter id="Image"/>
+<parameter id="JobPass">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="ORingRoiX">
+<default_type>integer</default_type>
+<default_value>870</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="ORingRoiY">
+<default_type>integer</default_type>
+<default_value>430</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="ORingValue">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="PartRoiX">
+<default_type>integer</default_type>
+<default_value>870</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="PartRoiY">
+<default_type>integer</default_type>
+<default_value>230</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="PartValue">
+<default_type>real</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<type_list>
+<item>real</item>
+</type_list>
+<value_max>255.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="ResultCode">
+<default_type>string</default_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="RoiHeight">
+<default_type>integer</default_type>
+<default_value>100</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="RoiWidth">
+<default_type>integer</default_type>
+<default_value>450</default_value>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="SymbolTypeDMC">
+<default_type>string</default_type>
+<default_value>Data Matrix ECC 200</default_value>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

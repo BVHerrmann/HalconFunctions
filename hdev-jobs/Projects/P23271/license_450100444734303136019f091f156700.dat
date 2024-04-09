@@ -1,0 +1,9 @@
+##################################################################################
+# Bertram Elektrotechnik GmbH  (Id: CID:450100444734303136019f091f156700)        #
+# HALCON E Pr RTL (Bundle) Bertram                                               #
+##################################################################################
+LICENSE MVTec_HALCON 25.09 MODULES=fc123bdom \
+        ID=CID:450100444734303136019f091f156700 FLAGS=PROGRESS_OK SESSIONS=1 \
+        SIGNATURE="1506 9273 A9CE 31CF E678 15FE 0455 8FC5 88DC 749F 705B \
+        05AA 70AC 88B9 08DA 7C7E 09B1 55B9 CF1F 3A2D 0314 1357 E53E 85C4 02C7 \
+        5681 1AE8 90E2 1B39 BA05 4C3F 0701"

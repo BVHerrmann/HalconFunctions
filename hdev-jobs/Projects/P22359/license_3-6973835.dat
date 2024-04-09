@@ -1,0 +1,8 @@
+##################################################################################
+# Bertram Bildverarbeitung GmbH  (Id: CM:3-6973835)                              #
+# HALCON Progress RTL (Bundle)                                                   #
+##################################################################################
+LICENSE MVTec_HALCON 25.09 MODULES=fc123bdom ID=CM:3-6973835 \
+        FLAGS=PROGRESS_OK SESSIONS=1 SIGNATURE="8CE0 B682 E07D FFEC A31D BD06 \
+        3827 5F54 0A2C 39A1 E9F4 479A A321 EA57 47B6 F173 772A 74BD 1288 9C82 \
+        FE3A 018B B7CB 9233 8821 B8F5 592F 9C3F 80F1 E2A5 67B2 2B07"

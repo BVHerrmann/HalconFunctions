@@ -1,0 +1,9 @@
+##################################################################################
+# Bertram Bildverarbeitung GmbH  (Id: CID:0353445345333247801002c2a3015a00)      #
+# HALCON E Pr RTL (Bundle) Bertram BV                                            #
+##################################################################################
+LICENSE MVTec_HALCON 25.05 MODULES=fc123bdom \
+        ID=CID:0353445345333247801002c2a3015a00 FLAGS=PROGRESS_OK SESSIONS=1 \
+        SIGNATURE="2E2A 0948 F55E 073E 3410 F35D B1EB 781B 3B22 4424 74EB \
+        2A8E 131D 7712 09DD 9A5E 0734 7211 0606 4FFD B577 38DE 6C05 DBD6 41B4 \
+        6BED 50FB BE04 A25D D210 07B9 FE09"

@@ -1,0 +1,8 @@
+##################################################################################
+# Bertram Elektrotechnik GmbH  (Id: CID:03534453453332478092f2cae0015a00)        #
+# HALCON E Progress RTL (FD) Bertram                                             #
+##################################################################################
+LICENSE MVTec_HALCON 25.09 MODULES=fd ID=CID:03534453453332478092f2cae0015a00 \
+        FLAGS=PROGRESS_OK SESSIONS=1 SIGNATURE="C8AD 00D9 378B 9D8D D94E 0EB4 \
+        73F3 5DDD 6FA6 8CBE 9458 89C2 7D54 C44D 50CA CA4F 72AA C0AC 68F3 F22B \
+        9270 89B6 32FF F68D 5E55 1762 0CF7 A21D 2B93 3186 38F6 BE09"

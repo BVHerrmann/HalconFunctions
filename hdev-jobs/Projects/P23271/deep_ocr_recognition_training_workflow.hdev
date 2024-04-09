@@ -1,0 +1,899 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* </c>
+<c>* Deep OCR recognition training workflow:</c>
+<c>* </c>
+<c>* This example demonstrates how to train the recognition</c>
+<c>* part of a Deep OCR model with custom data.</c>
+<c>* </c>
+<c>* Please note, that the HALCON Operator Reference contains</c>
+<c>* helpful additional information:</c>
+<c>* HALCON Operator Reference -&gt; OCR -&gt; Deep OCR</c>
+<c>* </c>
+<l>dev_close_window ()</l>
+<l>dev_update_off ()</l>
+<c></c>
+<l>WorkDir := 'tmp/'</l>
+<c></c>
+<c>* </c>
+<c>* </c>
+<c>* ***   0) SET PARAMETERS  ***</c>
+<c>* </c>
+<c>* Here, we specify a compatible DLDataset.</c>
+<c>* The compatible dataset formats are described in the</c>
+<c>* HALCON Operator Reference (OCR -&gt; Deep OCR).</c>
+<l>DatasetFilename := WorkDir + 'eWA.hdict'</l>
+<c>* </c>
+<c>* The folder OutputDir will contain all output data.</c>
+<c>* (e.g., preprocessed dataset and the trained model files).</c>
+<l>parse_filename (DatasetFilename, BaseNameDataset, _, _)</l>
+<l>OutputDir := WorkDir + 'dldata_recognition_' + BaseNameDataset</l>
+<c>* </c>
+<c>* Set to true, if the results should be deleted after running</c>
+<c>* this program.</c>
+<l>RemoveOutputs := false</l>
+<c>* </c>
+<c>* Optionally skip training or statistics visualization.</c>
+<l>SkipTraining := false</l>
+<l>SkipStatistics := false</l>
+<c>* </c>
+<c>* The variable PixelPerCharEstimate is used to filter out invalid</c>
+<c>* samples of the dataset using the procedure</c>
+<c>* find_invalid_samples_dl_ocr_recognition.</c>
+<c>* Also this estimate is used in computing a value in the</c>
+<c>* augmentation specification.</c>
+<l>PixelPerCharEstimate := 12.0</l>
+<c>* </c>
+<c>* Specify the image width of the recognition model. It is an</c>
+<c>* important parameter. It has to be increased if the dataset</c>
+<c>* contains images of words with a lot of characters in it.</c>
+<c>* The needed image width can be computed roughly if the average</c>
+<c>* width per character is known at the preprocessing resolution.</c>
+<c>* E.g., if we assume an average of 6 pixel per character, we can</c>
+<c>* fit words of length 20 in it.</c>
+<c>* If you change the ImageWidth too much from its default (120),</c>
+<c>* you will need much more training data because the pretrained</c>
+<c>* model was trained on the default width.</c>
+<c>* It is advisable to keep the image width during training close</c>
+<c>* to the default (120).</c>
+<c>* Please also remember that the image width can be changed</c>
+<c>* after training to very different and much higher values and the</c>
+<c>* model will still be able to read long words.</c>
+<l>ImageWidth := 22 * int(PixelPerCharEstimate)</l>
+<c>* </c>
+<c>* If possible, the training uses this batch size.</c>
+<l>MaxBatchSizeTraining := 16</l>
+<c>* </c>
+<c>* How many epochs to train?</c>
+<c>* Note, we choose a fairly low number of epochs here.</c>
+<c>* Please observe the training error and increase this value for</c>
+<c>* real world applications.</c>
+<l>NumEpochs := 256</l>
+<c>* </c>
+<c>* Specify if the training should use augmentation.</c>
+<l>UseAugmentation := true</l>
+<c>* </c>
+<c>* Adapt the model alphabet to the given dataset.</c>
+<l>ReduceAlphabetToDataset := true</l>
+<c>* </c>
+<c>* Specify the deep learning device runtime to work with.</c>
+<c>* Training is only supported on a GPU.</c>
+<l>DeviceRuntime := 'gpu'</l>
+<c>* </c>
+<c>* The dataset split is done randomly.</c>
+<c>* These parameters determine the split percentages.</c>
+<l>SplitPercentageTrain := 80</l>
+<l>SplitPercentageValidation := 10</l>
+<c>* </c>
+<c>* Specify if the preprocessed data should be overwritten.</c>
+<c>* 'auto':  It will be determined if the data has to be recomputed</c>
+<c>* 'true':  Always preprocess the data</c>
+<c>* 'false': Do not preprocess the data if it exists (raise error</c>
+<c>*          instead)</c>
+<l>OverwritePreprocessing := 'auto'</l>
+<c>* </c>
+<c>* </c>
+<c>* ***   1.) PREPARE   ***</c>
+<l>set_system ('seed_rand', 42)</l>
+<c>* </c>
+<c>* Prepare output paths.</c>
+<l>OutputDirPreprocessing := OutputDir + '/dlsample_files'</l>
+<l>BestModelFilename := OutputDir + '/model_' + BaseNameDataset + '_best.hdl'</l>
+<c>* </c>
+<l>file_exists (OutputDir, FileExists)</l>
+<l>if (not FileExists)</l>
+<l>    make_dir (OutputDir)</l>
+<l>endif</l>
+<c>* </c>
+<c>* Read an OCR recognition dataset.</c>
+<l>read_dl_dataset_ocr_recognition (DatasetFilename, [], [], DLDataset)</l>
+<c>* </c>
+<c>* Generate character statistics from dataset.</c>
+<l>gen_dl_dataset_ocr_recognition_statistics (DLDataset, CharStats)</l>
+<c>* </c>
+<c>* Read the OCR recognition model.</c>
+<l>read_dl_model ('pretrained_deep_ocr_recognition.hdl', DLModelHandle)</l>
+<c>* </c>
+<c>* Adjust the image width to the desired width.</c>
+<l>set_dl_model_param (DLModelHandle, 'image_width', ImageWidth)</l>
+<c>* </c>
+<c>* If requested we reduce the model alphabet to the character set in the given dataset.</c>
+<l>if (ReduceAlphabetToDataset)</l>
+<l>    set_dl_model_param (DLModelHandle, 'alphabet', CharStats.charset)</l>
+<l>endif</l>
+<c>* </c>
+<c>*  Find invalid samples in the dataset.</c>
+<l>InvalidGenericParam := dict{pixel_per_char_estimate: PixelPerCharEstimate}</l>
+<l>find_invalid_samples_dl_ocr_recognition (DLDataset.samples, DLModelHandle, InvalidGenericParam, InvalidSamplesIndices, InvalidSamplesReasons)</l>
+<c>* Visualize the invalid samples (if any).</c>
+<l>dev_display_dl_invalid_samples (DLDataset, DLModelHandle, InvalidSamplesIndices, InvalidSamplesReasons)</l>
+<c>* </c>
+<c>* Reduce the dataset to the valid samples.</c>
+<l>tuple_remove (DLDataset.samples, InvalidSamplesIndices, DLDataset.samples)</l>
+<l>if (|InvalidSamplesIndices| &gt; 0)</l>
+<c>    * Recompute character statistics from dataset because</c>
+<c>    * samples have been removed.</c>
+<l>    gen_dl_dataset_ocr_recognition_statistics (DLDataset, CharStats)</l>
+<l>endif</l>
+<c>* </c>
+<c>* Inspect 5 randomly selected dataset samples visually.</c>
+<l>WindowDict := dict{}</l>
+<l>create_dl_preprocess_param_from_model (DLModelHandle, 'none', 'full_domain', [], [], [], DLPreprocessParam)</l>
+<l>for Index := 0 to 4 by 1</l>
+<l>    SampleIndex := round(rand(1) * (|DLDataset.samples| - 1))</l>
+<l>    gen_dl_samples (DLDataset, SampleIndex, 'ocr_recognition', [], DLSample)</l>
+<l>    preprocess_dl_samples (DLSample, DLPreprocessParam)</l>
+<l>    dev_display_dl_data (DLSample, [], DLDataset, 'ocr_recognition_ground_truth', [], WindowDict)</l>
+<l>    dev_disp_text ('Press F5 to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<l>    stop ()</l>
+<l>endfor</l>
+<l>dev_close_window_dict (WindowDict)</l>
+<c>* </c>
+<l>if (not SkipStatistics)</l>
+<c>    * Display character statistics.</c>
+<l>    dev_display_dl_dataset_ocr_recognition_statistics (CharStats, 0.1, WindowHandles, ThresholdUsed)</l>
+<l>    dev_set_window (WindowHandles[0])</l>
+<l>    dev_disp_text ('Press F5 to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<l>    get_dataset_characters_info (CharStats, Chars, Count, AverageRatio)</l>
+<l>    if (ThresholdUsed)</l>
+<l>        dev_inspect_ctrl ([Chars,Count,AverageRatio])</l>
+<l>    endif</l>
+<l>    stop ()</l>
+<l>    if (ThresholdUsed)</l>
+<l>        dev_close_inspect_ctrl ([Chars,Count,AverageRatio])</l>
+<l>    endif</l>
+<l>    for W := |WindowHandles| - 1 to 0 by -1</l>
+<l>        dev_set_window (WindowHandles[W])</l>
+<l>        dev_close_window ()</l>
+<l>    endfor</l>
+<l>endif</l>
+<c>* </c>
+<c>* </c>
+<c>* Apply a random split to the dataset.</c>
+<l>split_dl_dataset (DLDataset, SplitPercentageTrain, SplitPercentageValidation, [])</l>
+<c>* </c>
+<c>* </c>
+<c>* Preprocess the data in DLDataset.</c>
+<c>* </c>
+<c>* Create preprocessing parameters based on the recognition model.</c>
+<l>if (UseAugmentation)</l>
+<l>    GenParamPreprocessing := dict{augmentation: 'true'}</l>
+<l>else</l>
+<l>    GenParamPreprocessing := dict{augmentation: 'false'}</l>
+<l>endif</l>
+<l>create_dl_preprocess_param_from_model (DLModelHandle, 'none', 'full_domain', [], [], GenParamPreprocessing, DLPreprocessParam)</l>
+<c>* </c>
+<c>* Existing preprocessed data is only overwritten if</c>
+<c>* preprocessing parameters or the dataset have changed.</c>
+<l>preprocess_dl_dataset (DLDataset, OutputDirPreprocessing, DLPreprocessParam, dict{overwrite_files: OverwritePreprocessing}, DLDatasetFileName)</l>
+<c>* </c>
+<c>* </c>
+<c>* Determine deep learning device to work with.</c>
+<l>query_available_dl_devices (gen_tuple_const(|DeviceRuntime|,'runtime'), DeviceRuntime, DLDeviceHandles)</l>
+<l>if (|DLDeviceHandles| == 0)</l>
+<l>    throw ('No supported device found to continue this example.')</l>
+<l>endif</l>
+<c>* </c>
+<c>* Choose the first device.</c>
+<l>DLDevice := DLDeviceHandles[0]</l>
+<l>set_dl_model_param (DLModelHandle, 'device', DLDevice)</l>
+<l>get_dl_model_param (DLModelHandle, 'batch_size', BatchSizeTrain)</l>
+<c>* </c>
+<c>* </c>
+<l>if (not SkipTraining)</l>
+<c>    * ***   2.) TRAIN   ***</c>
+<c>    * </c>
+<c>    * Adapt the batch size to the chosen GPU device.</c>
+<l>    get_dl_device_param (DLDevice, 'type', DeviceType)</l>
+<l>    if (DeviceType == 'gpu')</l>
+<l>        set_dl_model_param_max_gpu_batch_size (DLModelHandle, MaxBatchSizeTraining)</l>
+<l>    else</l>
+<l>        set_dl_model_param (DLModelHandle, 'batch_size', MaxBatchSizeTraining)</l>
+<l>    endif</l>
+<l>    get_dl_model_param (DLModelHandle, 'batch_size', BatchSizeTrain)</l>
+<c>    * </c>
+<c>    * For information on the parameters, see the documentation</c>
+<c>    * of set_dl_model_param () and get_dl_model_param ().</c>
+<l>    set_dl_model_param (DLModelHandle, 'learning_rate', 0.0008)</l>
+<c>    * </c>
+<c>    * Since the OCR recognition model is a pretrained model and</c>
+<c>    * it contains pretrained batch-norm layers, we need to adjust</c>
+<c>    * the momentum of these layers in order to ensure a good</c>
+<c>    * adaptation to the new training data.</c>
+<c>    * </c>
+<c>    * This is achieved by specifying a momentum which implies</c>
+<c>    * that the batch-norm statistics (running mean and standard</c>
+<c>    * deviation) roughly depend on the last full epoch of</c>
+<c>    * iterations.</c>
+<l>    find_dl_samples (DLDataset.samples, 'split', 'train', 'match', SampleIndicesTrain)</l>
+<l>    NumTrainSamples := |SampleIndicesTrain|</l>
+<l>    IterationsPerEpoch := floor(real(NumTrainSamples) / real(BatchSizeTrain))</l>
+<l>    BatchNormMomentum := 1 - 1 / IterationsPerEpoch</l>
+<l>    set_dl_model_param (DLModelHandle, 'batchnorm_momentum', BatchNormMomentum)</l>
+<c>    * </c>
+<c>    * Specify a serialization strategy.</c>
+<l>    SerializationStrategy := dict{['type']: 'best'}</l>
+<l>    parse_filename (BestModelFilename, BaseName, Extension, Directory)</l>
+<l>    SerializationStrategy.basename := Directory + BaseName</l>
+<c>    * </c>
+<c>    * Prepare the augmentation parameters.</c>
+<l>    if (UseAugmentation)</l>
+<l>        AugmentationParam := dict{augmentation_percentage: 100}</l>
+<c>        * Randomly remove pixels from the word image in x and y</c>
+<c>        * direction.</c>
+<c>        * This simulates inaccurate localization of the word.</c>
+<l>        RemovePixelMaxX := int(ceil(PixelPerCharEstimate * 0.5))</l>
+<l>        RemovePixelMaxY := 7</l>
+<l>        AugmentationParam.remove_pixel := [RemovePixelMaxX,RemovePixelMaxY]</l>
+<c>        * Randomly vary the brightness. Note, that the range of</c>
+<c>        * preprocessed word images is [-1.0, 1.0].</c>
+<l>        AugmentationParam.brightness_variation := 0.1</l>
+<l>    else</l>
+<l>        AugmentationParam := dict{augmentation_percentage: 0}</l>
+<l>    endif</l>
+<c>    * Define the percentage of the training data that is used during f_score visualization.</c>
+<l>    DisplayParam := dict{selected_percentage_train_samples: min2(NumTrainSamples,300.0) / NumTrainSamples * 100}</l>
+<c>    * </c>
+<c>    * Prepare the training parameters.</c>
+<l>    create_dl_train_param (DLModelHandle, NumEpochs, 1, 'true', 42, ['serialize', 'augment', 'display', 'evaluate_before_train'], [SerializationStrategy,AugmentationParam,DisplayParam,'true'], TrainParam)</l>
+<c>    * </c>
+<c>    * Training can start/continue now.</c>
+<l>    train_dl_model (DLDataset, DLModelHandle, TrainParam, 0, TrainResults, TrainInfos, EvaluationInfos)</l>
+<l>    dev_disp_text ('Press F5 to continue or run train_dl_model again', 'window', 'bottom', 'left', 'black', [], [])</l>
+<l>    stop ()</l>
+<c>    * We clear the training model because we want to read the</c>
+<c>    * best model that was saved during training.</c>
+<l>    clear_dl_model (DLModelHandle)</l>
+<l>    dev_close_window ()</l>
+<l>    dev_close_window ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* </c>
+<c>* ***   3.) EVALUATE   ***</c>
+<c>* </c>
+<c>* We evaluate the baseline model which is pretrained and the</c>
+<c>* finetuned model. By default we suggest the same image width as</c>
+<c>* used during training. It is possible to increase/decrease the</c>
+<c>* image width during inference though.</c>
+<l>ImageWidthEvaluation := ImageWidth</l>
+<c>* </c>
+<c>* If possible, the evaluation uses a high batch size.</c>
+<l>BatchSizeEval := BatchSizeTrain</l>
+<c>* </c>
+<c>* Select the split to be used in the evaluation.</c>
+<l>EvaluationSplit := 'test'</l>
+<c>* </c>
+<c>* Show progress during evaluation.</c>
+<l>GenParamEval := dict{show_progress: true}</l>
+<c>* </c>
+<c>* Evaluate the baseline model first.</c>
+<l>read_dl_model ('pretrained_deep_ocr_recognition.hdl', DLModelHandleBaseline)</l>
+<l>evaluate_ocr_recognition (DLModelHandleBaseline, DLDevice, ImageWidthEvaluation, BatchSizeEval, DLDataset, EvaluationSplit, GenParamEval, EvaluationResultBaseline, AccuracyBaseline)</l>
+<c>* </c>
+<c>* Evaluate the finetuned model.</c>
+<l>read_dl_model (BestModelFilename, DLModelHandle)</l>
+<l>evaluate_ocr_recognition (DLModelHandle, DLDevice, ImageWidthEvaluation, BatchSizeEval, DLDataset, EvaluationSplit, GenParamEval, EvaluationResultFinetuning, AccuracyFinetuning)</l>
+<c>* </c>
+<c>* </c>
+<c>* ***   4.) COMPARE FINETUNED AND BASELINE MODEL   ***</c>
+<c>* </c>
+<c>* We can reduce the batch size for this part because only single</c>
+<c>* samples will be processed.</c>
+<l>set_dl_model_param (DLModelHandle, 'batch_size', 1)</l>
+<l>set_dl_model_param (DLModelHandleBaseline, 'batch_size', 1)</l>
+<c>* </c>
+<l>find_dl_samples (DLDataset.samples, 'split', EvaluationSplit, 'match', SampleIndices)</l>
+<c>* </c>
+<l>WindowDict1 := dict{}</l>
+<l>WindowDict2 := dict{}</l>
+<l>WindowHandleAccuracy := []</l>
+<l>tuple_shuffle (SampleIndices, SampleIndices)</l>
+<l>NumSamplesComparison := 10</l>
+<l>for IndexInference := 0 to min2(|SampleIndices| - 1,NumSamplesComparison - 1) by 1</l>
+<l>    read_dl_samples (DLDataset, SampleIndices[IndexInference], DLSampleInference)</l>
+<l>    apply_dl_model (DLModelHandle, DLSampleInference, [], DLResult)</l>
+<l>    apply_dl_model (DLModelHandleBaseline, DLSampleInference, [], DLResultOrig)</l>
+<l>    dev_display_dl_data (DLSampleInference, DLResultOrig, [], 'ocr_recognition_both', [], WindowDict1)</l>
+<l>    dev_disp_text ('pretrained', 'window', 'top', 'right', 'black', [], [])</l>
+<l>    dev_display_dl_data (DLSampleInference, DLResult, [], 'ocr_recognition_both', [], WindowDict2)</l>
+<l>    dev_disp_text ('finetuned', 'window', 'top', 'right', 'black', [], [])</l>
+<l>    get_window_extents (WindowDict2.ocr_recognition_both, Row, Column, Width, Height)</l>
+<l>    dev_set_window (WindowDict2.ocr_recognition_both)</l>
+<l>    dev_set_window_extents (int(Height + 80), 0, Width, Height)</l>
+<l>    if (|WindowHandleAccuracy| == 0)</l>
+<l>        dev_display_accuracy_comparison (['Deep OCR pretrained', 'Deep OCR finetuned'], [AccuracyBaseline,AccuracyFinetuning], Column + Width + 26, EvaluationSplit, |SampleIndices|, WindowHandleAccuracy)</l>
+<l>        dev_set_window (WindowHandleAccuracy)</l>
+<l>        dev_set_window_extents (-1, Width + 25, -1, -1)</l>
+<l>        dev_disp_text ('Press F5 to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<l>    endif</l>
+<l>    stop ()</l>
+<l>endfor</l>
+<l>dev_close_window_dict (WindowDict1)</l>
+<l>dev_close_window_dict (WindowDict2)</l>
+<l>clear_dl_model (DLModelHandleBaseline)</l>
+<l>clear_dl_model (DLModelHandle)</l>
+<l>dev_set_window (WindowHandleAccuracy)</l>
+<l>dev_close_window ()</l>
+<c>* </c>
+<c>* </c>
+<c>* ***   5.) DEEP OCR INTEGRATION AND INFERENCE   ***</c>
+<c>* </c>
+<c>* Inference is based on using the Deep OCR operator set.</c>
+<l>create_deep_ocr ([], [], DeepOcrHandle)</l>
+<c>* </c>
+<c>* The finetuned model needs to be specified as the recognition</c>
+<c>* component.</c>
+<l>set_deep_ocr_param (DeepOcrHandle, 'recognition_model', BestModelFilename)</l>
+<c>* </c>
+<c>* Additionally we make sure that the runtime related parameters</c>
+<c>* are set optimally for inference.</c>
+<l>set_deep_ocr_param (DeepOcrHandle, 'recognition_batch_size', 1)</l>
+<l>set_deep_ocr_param (DeepOcrHandle, 'recognition_optimize_for_inference', 'true')</l>
+<c>* </c>
+<c>* For convenience we write the Deep OCR model to the output</c>
+<c>* directory. That way it can be easily read via read_deep_ocr.</c>
+<l>BestModelDeepOCRFilename := OutputDir + '/model_' + BaseNameDataset + 'best.hdo'</l>
+<l>write_deep_ocr (DeepOcrHandle, BestModelDeepOCRFilename)</l>
+<c>* </c>
+<c>* </c>
+<l>dev_open_window (0, 0, 500, 200, 'black', WindowHandle)</l>
+<l>list_image_files ('expiration_date', 'default', [], ImageFiles)</l>
+<l>tuple_shuffle (ImageFiles, ImageFiles)</l>
+<c>* </c>
+<l>NumImages := 10</l>
+<l>for I := 0 to min2(NumImages,|ImageFiles|) - 1 by 1</l>
+<l>    read_image (Image, ImageFiles[I])</l>
+<l>    apply_deep_ocr (Image, DeepOcrHandle, 'recognition', DeepOcrResult)</l>
+<l>    dev_display_deep_ocr_results (Image, WindowHandle, DeepOcrResult, [], [])</l>
+<l>    stop ()</l>
+<l>endfor</l>
+<l>dev_disp_text ('Press F5 to end this example', 'window', 'bottom', 'right', 'black', [], [])</l>
+<l>stop ()</l>
+<l>dev_close_window ()</l>
+<c>* </c>
+<c>* </c>
+<c>* ***   6.) REMOVE FILES   ***</c>
+<l>clean_up_output (OutputDir, RemoveOutputs)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="clean_up_output">
+<interface>
+<ic>
+<par name="OutputDir" base_type="ctrl" dimension="0"/>
+<par name="RemoveResults" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This local example procedure cleans up the output of the example.</c>
+<c></c>
+<l>if (not RemoveResults)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* Display a warning.</c>
+<l>dev_open_window (0, 0, 600, 300, 'black', WindowHandle)</l>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<l>WarningCleanup := ['Congratulations, you have finished the example.', '', 'Unless you would like to use the output data / model,', 'press F5 to clean up.']</l>
+<l>dev_disp_text (WarningCleanup, 'window', 'center', 'center', ['black', 'black', 'coral', 'coral', 'coral'], [], [])</l>
+<c></c>
+<l>stop ()</l>
+<l>dev_close_window ()</l>
+<c></c>
+<c>* Delete all outputs of the example.</c>
+<l>remove_dir_recursively (OutputDir)</l>
+<l>delete_file ('model_best.hdl')</l>
+<l>delete_file ('model_best_info.hdict')</l>
+<l>return ()</l>
+</body>
+<docu id="clean_up_output">
+<short lang="en_US">Local example procedure for cleaning up files written by example script.</short>
+<parameters>
+<parameter id="OutputDir">
+<default_type>string</default_type>
+<description lang="en_US">Output directory, where preprocessed data is written to.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>filename.dir</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="RemoveResults"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_accuracy_comparison">
+<interface>
+<ic>
+<par name="ModelNames" base_type="ctrl" dimension="0"/>
+<par name="Accuracies" base_type="ctrl" dimension="0"/>
+<par name="WindowColumn" base_type="ctrl" dimension="0"/>
+<par name="Split" base_type="ctrl" dimension="0"/>
+<par name="NumSamples" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="WindowHandle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure displays the accuracy comparison of 2 models.</c>
+<c>* </c>
+<l>if (|ModelNames| != 2 or |Accuracies| != 2)</l>
+<l>    throw ('This procedure works only with 2 models.')</l>
+<l>endif</l>
+<c>* </c>
+<l>WindowWidth := 512</l>
+<l>WindowHeight := 320</l>
+<l>dev_open_window (0, WindowColumn, WindowWidth, WindowHeight, 'black', WindowHandle)</l>
+<l>set_display_font (WindowHandle, 14, 'mono', 'true', 'false')</l>
+<l>Headline := 'Accuracy comparison on \'' + Split + '\' split:'</l>
+<l>Footer := 'The split contains ' + NumSamples + ' samples.'</l>
+<l>dev_disp_text (Headline, 'window', 'top', 'left', 'yellow', 'box', 'false')</l>
+<l>dev_disp_text (Footer, 'window', 'bottom', 'left', 'white', 'box', 'false')</l>
+<c>* </c>
+<l>PieColors := ['#008000', '#800000']</l>
+<l>PieParams := dict{}</l>
+<l>PieParams.title_color := 'white'</l>
+<l>PieParams.footnote_color := 'green'</l>
+<l>PieRadius := WindowHeight / 6</l>
+<l>PieRow := WindowHeight / 2</l>
+<l>PieColumn := WindowWidth / 4</l>
+<l>PieColumnDelta := WindowWidth / 2</l>
+<c>* </c>
+<l>for M := 0 to 1 by 1</l>
+<l>    Ratio := Accuracies[M] / 100</l>
+<l>    PieRatios := [Ratio,1 - Ratio]</l>
+<l>    PieColumn := PieColumn + M * PieColumnDelta</l>
+<l>    PieParams.title := ModelNames[M]</l>
+<l>    PieParams.footnote := Accuracies[M]$'6.2f' + '%'</l>
+<l>    dev_display_pie_chart (WindowHandle, PieRatios, PieRow, PieColumn, PieRadius, PieColors, PieParams)</l>
+<l>endfor</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_accuracy_comparison">
+<short lang="en_US">This procedure displays the accuracy comparison of 2 models.</short>
+<parameters>
+<parameter id="Accuracies">
+<default_type>real</default_type>
+<mixed_type>optional</mixed_type>
+<multivalue>true</multivalue>
+<sem_type>number</sem_type>
+<type_list>
+<item>integer</item>
+<item>real</item>
+</type_list>
+<value_max>100.000000</value_max>
+<value_min>0.000000</value_min>
+</parameter>
+<parameter id="ModelNames">
+<default_type>string</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>true</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="NumSamples"/>
+<parameter id="Split"/>
+<parameter id="WindowColumn">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>number</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="WindowHandle">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>window</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="get_dataset_characters_info">
+<interface>
+<ic>
+<par name="CharStats" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Chars" base_type="ctrl" dimension="0"/>
+<par name="Count" base_type="ctrl" dimension="0"/>
+<par name="AverageRatio" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure returns tuples with information about the dataset characters</c>
+<c>* sorted by number of occurrences in ascending order</c>
+<c></c>
+<c>* Read information from CharStats.</c>
+<l>Chars := gen_tuple_const(CharStats.charset_size,'')</l>
+<l>Count := gen_tuple_const(CharStats.charset_size,0)</l>
+<l>AverageRatio := gen_tuple_const(CharStats.charset_size,0)</l>
+<l>for C := 0 to CharStats.charset_size - 1 by 1</l>
+<l>    Char := CharStats.charset[C]</l>
+<l>    Chars[C] := Char</l>
+<l>    Count[C] := CharStats.chars.[Char].count</l>
+<l>    AverageRatio[C] := CharStats.chars.[Char].average_ratio</l>
+<l>endfor</l>
+<c></c>
+<c>* Sort the tuple by number of occurrences in ascending order.</c>
+<l>SortIdx := sort_index(Count)</l>
+<l>Chars := Chars[SortIdx]</l>
+<l>Count := Count[SortIdx]</l>
+<l>AverageRatio := AverageRatio[SortIdx]</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="get_dataset_characters_info">
+<abstract lang="en_US">This procedure retrieves tuples with information about the dataset characters: the characters Chars, their number of occurrences Count and their occurrences average ratio AverageRatio. All output tuples are sorted by number of character occurrences in ascending order.</abstract>
+<short lang="en_US">This procedure retrieves tuples with information about the dataset characters.</short>
+<parameters>
+<parameter id="AverageRatio">
+<default_type>real</default_type>
+<description lang="en_US">Tuple with the average frequency ratio of the dataset characters.</description>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="CharStats">
+<default_type>integer</default_type>
+<description lang="en_US">Dictionary containing the character statistics.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>dict</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="Chars">
+<default_type>string</default_type>
+<description lang="en_US">Tuple with the dataset characters.</description>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="Count">
+<default_type>integer</default_type>
+<description lang="en_US">Tuple with the number of occurrences of the dataset characters.</description>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_dl_dataset_ocr_recognition_statistics">
+<interface>
+<ic>
+<par name="CharStats" base_type="ctrl" dimension="0"/>
+<par name="AverageRatioThreshold" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="WindowHandles" base_type="ctrl" dimension="0"/>
+<par name="UseThreshold" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure displays statistics about the dataset characters.</c>
+<c></c>
+<l>WindowHandles := []</l>
+<l>if (AverageRatioThreshold &lt; 0.0)</l>
+<l>    throw ('The average ratio threshold must not be negative.')</l>
+<l>endif</l>
+<l>if (CharStats.charset_size &lt; 1)</l>
+<l>    throw ('There are no character statistics to display.')</l>
+<l>endif</l>
+<c>* The threshold value 0 disables the threshold.</c>
+<l>UseThreshold := AverageRatioThreshold &gt; 0.0</l>
+<c></c>
+<c>* Collect characters data.</c>
+<l>Chars := []</l>
+<l>Counts := []</l>
+<l>Ratios := []</l>
+<l>NumChars := 0</l>
+<l>for N := 1 to 2 by 1</l>
+<l>    for C := 0 to CharStats.charset_size - 1 by 1</l>
+<l>        Char := CharStats.charset[C]</l>
+<l>        Count := CharStats.chars.[Char].count</l>
+<l>        Ratio := CharStats.chars.[Char].average_ratio</l>
+<l>        if (not UseThreshold or Ratio &lt;= AverageRatioThreshold)</l>
+<l>            Chars := [Chars,Char]</l>
+<l>            Counts := [Counts,Count]</l>
+<l>            Ratios := [Ratios,Ratio]</l>
+<l>        endif</l>
+<l>    endfor</l>
+<c>    * Disable the threshold if there are no character statistics</c>
+<c>    * to display in order to display all available statistics.</c>
+<l>    NumChars := |Chars|</l>
+<l>    if (UseThreshold and NumChars == 0)</l>
+<l>        AverageRatioThreshold := 0.0</l>
+<l>        UseThreshold := false</l>
+<l>    else</l>
+<l>        break</l>
+<l>    endif</l>
+<l>endfor</l>
+<c>* </c>
+<l>SortIdx := sort_index(Ratios)</l>
+<l>Chars := Chars[SortIdx]</l>
+<l>Counts := Counts[SortIdx]</l>
+<l>Ratios := Ratios[SortIdx]</l>
+<c></c>
+<c>* Display general info on dataset character in 1st window.</c>
+<l>FontSize := 14</l>
+<l>WindowWidth := 850</l>
+<l>WindowHeight := 600</l>
+<l>WindowInfoWidth := int(WindowWidth * 0.51)</l>
+<l>dev_open_window (0, 0, WindowInfoWidth, WindowHeight, 'black', WindowHandleInfo)</l>
+<l>set_display_font (WindowHandleInfo, FontSize, 'mono', 'true', 'false')</l>
+<l>get_string_extents (WindowHandleInfo, sum(CharStats.charset + ''), _, _, StrWidth, _)</l>
+<c>* </c>
+<l>CharWidth := StrWidth / CharStats.charset_size</l>
+<l>NumCharsPerLine := int(WindowInfoWidth / CharWidth) - 6</l>
+<l>NumCharsetLines := int(ceil(CharStats.charset_size / real(NumCharsPerLine)))</l>
+<l>CharsetLines := gen_tuple_const(NumCharsetLines,'')</l>
+<l>for L := 0 to NumCharsetLines - 1 by 1</l>
+<l>    Start := NumCharsPerLine * L</l>
+<l>    End := min2(Start + NumCharsPerLine,CharStats.charset_size) - 1</l>
+<l>    CharsetLines[L] := '"' + sum(CharStats.charset[Start:End] + '') + '"'</l>
+<l>endfor</l>
+<c>* </c>
+<l>StrNumChars := NumChars + '/' + CharStats.charset_size</l>
+<l>if (NumChars == CharStats.charset_size)</l>
+<l>    StrNumChars := StrNumChars + ' (all)'</l>
+<l>endif</l>
+<l>StrThreshold := '' + AverageRatioThreshold</l>
+<l>if (not UseThreshold)</l>
+<l>    StrThreshold := '\'not used\''</l>
+<l>endif</l>
+<l>InfoChars := []</l>
+<l>InfoChars[|InfoChars|] := ''</l>
+<l>if (not UseThreshold)</l>
+<l>    InfoChars[|InfoChars|] := 'Displayed in the window on the right'</l>
+<l>    InfoChars[|InfoChars|] := 'are all characters in the dataset '</l>
+<l>    InfoChars[|InfoChars|] := 'along with their occurrence count.'</l>
+<l>else</l>
+<l>    InfoChars[|InfoChars|] := 'Displayed in the window on the right'</l>
+<l>    InfoChars[|InfoChars|] := 'are characters that have an average '</l>
+<l>    InfoChars[|InfoChars|] := 'occurrence ratio* lower than the threshold.'</l>
+<l>endif</l>
+<l>InfoChars[|InfoChars|] := ''</l>
+<l>if (UseThreshold)</l>
+<l>    InfoChars[|InfoChars|] := 'Number of characters: ' + StrNumChars</l>
+<l>    InfoChars[|InfoChars|] := 'Average occurrence ratio* threshold: ' + StrThreshold</l>
+<l>    InfoChars[|InfoChars|] := ''</l>
+<l>endif</l>
+<l>InfoChars[|InfoChars|] := 'The pie charts on the right visualize the'</l>
+<l>InfoChars[|InfoChars|] := 'occurrence ratio* of a character.'</l>
+<l>InfoChars[|InfoChars|] := ''</l>
+<l>InfoChars[|InfoChars|] := 'Please note, that characters with low'</l>
+<l>InfoChars[|InfoChars|] := 'occurrence might not be learned well.'</l>
+<l>InfoChars[|InfoChars|] := ''</l>
+<l>InfoChars[|InfoChars|] := '* The average occurrence ratio of a character is'</l>
+<l>InfoChars[|InfoChars|] := 'its count divided by the occurrences average.'</l>
+<l>InfoChars[|InfoChars|] := ''</l>
+<c></c>
+<l>Info := ['Dataset character statistics:', '']</l>
+<l>Info := [Info,'Charset size: ' + CharStats.charset_size]</l>
+<l>Info := [Info,'Occurrences count: ' + CharStats.occurrences_count]</l>
+<l>Info := [Info,'Occurrences average: ' + CharStats.occurrences_average]</l>
+<l>Info := [Info,'', 'Charset: ',CharsetLines]</l>
+<l>if (NumChars &gt; 0)</l>
+<l>    Info := [Info,'',InfoChars]</l>
+<l>endif</l>
+<l>InfoColor := gen_tuple_const(|Info|,'white')</l>
+<l>InfoColor[0] := 'yellow'</l>
+<l>dev_disp_text (Info, 'window', 'top', 'left', InfoColor, 'box', 'false')</l>
+<l>WindowHandles := [WindowHandles,WindowHandleInfo]</l>
+<c></c>
+<c>* Display characters with their number of occurrences in 2nd window.</c>
+<l>if (NumChars == 0)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<l>PieStartRow := 0</l>
+<l>PieStartCol := 0</l>
+<l>PieWindowWidth := WindowWidth - PieStartCol</l>
+<l>PieWindowHeight := WindowHeight - PieStartRow</l>
+<l>PieHWRatio := real(PieWindowHeight) / PieWindowWidth</l>
+<l>NumPieCols := int(ceil(sqrt(NumChars / PieHWRatio)))</l>
+<l>NumPieRows := int(ceil(real(NumChars) / NumPieCols))</l>
+<c></c>
+<l>FontSizeChars := 12</l>
+<l>dev_open_window (0, WindowInfoWidth + 12, WindowWidth, WindowHeight, 'black', WindowHandleChars)</l>
+<l>set_display_font (WindowHandleChars, FontSizeChars, 'mono', 'true', 'false')</l>
+<l>get_string_extents (WindowHandleChars, sum(CharStats.charset + ''), StrAscent, StrDescent, _, StrHeight)</l>
+<l>SepSize := StrAscent + StrDescent + StrHeight + 2</l>
+<l>PieMinRadius := 4.5</l>
+<l>PieMaxRadius := 20.5</l>
+<l>PieRowRadius := max2(PieMinRadius,0.5 * PieWindowHeight / NumPieRows - SepSize)</l>
+<l>PieColRadius := max2(PieMinRadius,0.5 * PieWindowWidth / NumPieCols - SepSize)</l>
+<l>PieRadius := min([PieRowRadius,PieColRadius,PieMaxRadius])</l>
+<l>SepRowSize := 0.5 * PieWindowHeight / NumPieRows - PieRadius</l>
+<l>SepColSize := 0.5 * PieWindowWidth / NumPieCols - PieRadius</l>
+<l>PieRowFirst := PieStartRow + PieRadius + SepRowSize</l>
+<l>PieColFirst := PieStartCol + PieRadius + SepColSize</l>
+<l>PieRowDelta := 2 * (PieRadius + SepRowSize)</l>
+<l>PieColDelta := 2 * (PieRadius + SepColSize)</l>
+<c></c>
+<l>PieColors := ['green', 'orange']</l>
+<l>PieParams := dict{}</l>
+<l>PieParams.title_color := 'white'</l>
+<l>PieParams.footnote_color := 'white'</l>
+<c></c>
+<c>* Display separator lines.</c>
+<l>gen_empty_obj (SepLines)</l>
+<l>for R := 1 to NumPieRows - 1 by 1</l>
+<l>    SepRow := PieRowFirst + (R - 0.5) * PieRowDelta</l>
+<l>    gen_contour_polygon_xld (SepLine, [SepRow,SepRow], [0,WindowWidth - 1])</l>
+<l>    concat_obj (SepLines, SepLine, SepLines)</l>
+<l>endfor</l>
+<l>for C := 1 to NumPieCols - 1 by 1</l>
+<l>    SepCol := PieColFirst + (C - 0.5) * PieColDelta</l>
+<l>    gen_contour_polygon_xld (SepLine, [0,WindowHeight - 1], [SepCol,SepCol])</l>
+<l>    concat_obj (SepLines, SepLine, SepLines)</l>
+<l>endfor</l>
+<l>dev_set_line_width (1)</l>
+<l>dev_set_color ('#404040')</l>
+<l>dev_display (SepLines)</l>
+<c></c>
+<c>* Display the pie charts for the characters.</c>
+<l>for P := 0 to NumChars - 1 by 1</l>
+<l>    Count := Counts[P]</l>
+<l>    Ratio := min2(1,Ratios[P])</l>
+<l>    PieRatios := [Ratio,1 - Ratio]</l>
+<l>    PieParams.title := '\'' + Chars[P] + '\''</l>
+<l>    PieParams.footnote := '' + Count</l>
+<l>    PieRow := PieRowFirst + (P / NumPieCols) * PieRowDelta</l>
+<l>    PieCol := PieColFirst + (P % NumPieCols) * PieColDelta</l>
+<l>    dev_display_pie_chart (WindowHandleChars, PieRatios, PieRow, PieCol, PieRadius, PieColors, PieParams)</l>
+<l>endfor</l>
+<c></c>
+<l>set_display_font (WindowHandleChars, FontSize, 'mono', 'true', 'false')</l>
+<l>WindowHandles := [WindowHandles,WindowHandleChars]</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_dl_dataset_ocr_recognition_statistics">
+<abstract lang="en_US">This procedure displays information about the dataset characters in 2 windows:
+- In the information window (left): displays general information about the dataset characters.
+- In the characters window (right): displays the dataset characters with an average ratio less than AverageRatioThreshold. The threshold value 0 means do not use threshold, so all characters are displayed.</abstract>
+<short lang="en_US">This procedure displays statistics about the dataset characters.</short>
+<parameters>
+<parameter id="AverageRatioThreshold">
+<default_type>real</default_type>
+<description lang="en_US">Threshold average ratio until which characters should be displayed.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>real</sem_type>
+<type_list>
+<item>integer</item>
+<item>real</item>
+</type_list>
+</parameter>
+<parameter id="CharStats">
+<default_type>integer</default_type>
+<description lang="en_US">Dictionary containing the character statistics.</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>dict</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="UseThreshold"/>
+<parameter id="WindowHandles">
+<default_type>integer</default_type>
+<description lang="en_US">Handle of the output windows where the character statistics are displayed.</description>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<sem_type>window</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="evaluate_ocr_recognition">
+<interface>
+<ic>
+<par name="DLModelHandle" base_type="ctrl" dimension="0"/>
+<par name="DLDevice" base_type="ctrl" dimension="0"/>
+<par name="ImageWidth" base_type="ctrl" dimension="0"/>
+<par name="BatchSize" base_type="ctrl" dimension="0"/>
+<par name="DLDataset" base_type="ctrl" dimension="0"/>
+<par name="EvaluationSplit" base_type="ctrl" dimension="0"/>
+<par name="GenParam" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="EvaluationResult" base_type="ctrl" dimension="0"/>
+<par name="Accuracy" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>set_dl_model_param (DLModelHandle, 'batch_size', 1)</l>
+<l>set_dl_model_param (DLModelHandle, 'image_width', ImageWidth)</l>
+<l>set_dl_model_param (DLModelHandle, 'device', DLDevice)</l>
+<l>set_dl_model_param (DLModelHandle, 'optimize_for_inference', 'true')</l>
+<l>set_dl_model_param (DLModelHandle, 'batch_size', BatchSize)</l>
+<l>set_dl_model_param (DLModelHandle, 'runtime_init', 'immediately')</l>
+<l>evaluate_dl_model (DLDataset, DLModelHandle, 'split', EvaluationSplit, GenParam, EvaluationResult, EvalParamsOrig)</l>
+<l>set_dl_model_param (DLModelHandle, 'batch_size', 1)</l>
+<l>Accuracy := EvaluationResult.accuracy</l>
+<l>return ()</l>
+</body>
+<docu id="evaluate_ocr_recognition">
+<abstract lang="en_US">Evaluates a Deep OCR recognition model on a given dataset split.</abstract>
+<short lang="en_US">Evaluates a Deep OCR recognition model on a given dataset split.</short>
+<parameters>
+<parameter id="Accuracy"/>
+<parameter id="BatchSize"/>
+<parameter id="DLDataset"/>
+<parameter id="DLDevice">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>dl_device</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="DLModelHandle"/>
+<parameter id="EvaluationResult"/>
+<parameter id="EvaluationSplit"/>
+<parameter id="GenParam"/>
+<parameter id="ImageWidth">
+<default_type>integer</default_type>
+<default_value>120</default_value>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>number</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_min>1</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>
